@@ -36,36 +36,90 @@
         <span class="vid-start" aria-hidden="true"><span class="play-ico"></span><span class="vid-start-text"><b>${esc(V.label || 'Meet Chloe')}</b></span></span>
       </button>`;
   }
+  // ---- About on the page: video + intro, then My Story read from top to bottom ----
+  function inlineVideo() {
+    const V = S.about.video || {};
+    if (!V.src) return photoFigure('photo-intro');
+    return `<figure class="about-vid">
+        <video controls playsinline preload="none" ${V.poster ? `poster="${esc(V.poster)}"` : ''} aria-label="${esc(V.label || 'Meet Chloe')}: a short video introduction">
+          <source src="${esc(V.src)}" type="video/mp4">
+          ${V.captions ? `<track kind="captions" srclang="en" label="English" src="${esc(V.captions)}" default>` : ''}
+        </video>
+        <figcaption>${T('about.video.label')}</figcaption>
+      </figure>`;
+  }
+  // every photo or short video of a chapter, in the order of content.js
+  const chapterMedia = sc => {
+    if (sc.images && sc.images.length) return sc.images.filter(m => m && (m.src || m.video));
+    if (sc.video) return [{ video: sc.video, alt: sc.alt }];
+    if (sc.image) return [{ src: sc.image, alt: sc.alt }];
+    return [];
+  };
+  const mediaInner = (m, lazy = true) => m.video
+    ? `<img class="ch-bg" src="${esc(m.poster || '')}" alt="" ${lazy ? 'loading="lazy"' : ''}><video class="ch-fg" src="${esc(m.video)}" poster="${esc(m.poster || '')}" controls playsinline preload="none" aria-label="${esc(m.alt || '')}"></video>`
+    : `<img class="ch-bg" src="${esc(m.src)}" alt="" ${lazy ? 'loading="lazy"' : ''}><img class="ch-fg" src="${esc(m.src)}" alt="${esc(m.alt || '')}" ${lazy ? 'loading="lazy"' : ''}>`;
+  function chapterHTML(sc, i) {
+    const b = `about.scenes.${i}.`;
+    const paras = (Array.isArray(sc.text) ? sc.text : [sc.text]).map((_, k) => `<p>${T(b + (Array.isArray(sc.text) ? 'text.' + k : 'text'))}</p>`).join('');
+    const media = chapterMedia(sc);
+    const ex = sc.extras && sc.extras.items && sc.extras.items.length
+      ? `<p class="ch-extras"><b>${T(b + 'extras.label')}:</b> ${sc.extras.items.map((_, k) => T(b + 'extras.items.' + k)).join(', ')}</p>` : '';
+    const mediaHTML = media.length ? `<div class="ch-media">
+        <div class="ch-main" data-ch="${i}">${mediaInner(media[0])}</div>
+        ${media.length > 1 ? `<div class="ch-thumbs" role="group" aria-label="${esc(sc.title)}: choose a photo">
+          ${media.map((m, k) => `<button type="button" class="ch-thumb" data-ch="${i}" data-k="${k}" aria-label="${esc((m.video ? 'Video: ' : 'Photo: ') + (m.alt || 'photo ' + (k + 1)))}"${k ? '' : ' aria-current="true"'}>
+            <img src="${esc(m.poster || m.src)}" alt="" loading="lazy">${m.video ? '<span class="ch-play" aria-hidden="true"></span>' : ''}</button>`).join('')}
+        </div>` : ''}
+      </div>` : '';
+    return `<article class="ch${media.length ? '' : ' ch-textonly'}" id="story-${i + 1}" aria-labelledby="ch-t-${i}">
+        ${mediaHTML}
+        <div class="ch-text">
+          <p class="ch-kicker"><span class="ch-n">${String(i + 1).padStart(2, '0')}</span>${sc.place ? T(b + 'place') : ''}</p>
+          <h4 id="ch-t-${i}">${T(b + 'title')}</h4>
+          ${paras}${ex}
+        </div>
+      </article>`;
+  }
+  function universitiesHTML() {
+    if (!S.sponsors || !S.sponsors.length) return '';
+    return `<div class="unis"><h3 class="small-head">Universities</h3>
+      <ul class="uni-list">${S.sponsors.map((sp, i) => `<li><button type="button" class="uni" data-school="${i}">
+        ${sp.logo ? `<span class="uni-logo"><img src="${esc(sp.logo)}" alt="" loading="lazy"></span>` : ''}
+        <span class="uni-text"><span class="uni-name">${esc(sp.name)}</span>${sp.relation ? `<span class="uni-rel">${esc(sp.relation)}</span>` : ''}</span>
+      </button></li>`).join('')}</ul></div>`;
+  }
   function aboutBody() {
-    const A = S.about, vid = watchButton();
-    const media = vid || (showTodo()
-      ? `<div class="vid-todo"><p><b>To add:</b> your intro video (MP4, under 20 MB).</p></div>`
-      : photoFigure('photo-intro'));
-    const photoInStory = vid || showTodo();
+    const A = S.about;
     return `<div class="about-top">
-        <div class="about-media">${media}</div>
+        <div class="about-media">${inlineVideo()}</div>
         <div class="about-intro">
           <p class="about-name">${T('hero.name')}</p>
           <p class="about-lead">${T('about.paragraphs.0')}</p>
           <h3 class="small-head">${T('about.interestsTitle')}</h3>
           ${interestsList()}
+          <a class="text-link about-next" href="#story-1">Read my story <span aria-hidden="true">↓</span></a>
         </div>
       </div>
-      <div class="about-story${photoInStory ? '' : ' no-photo'}">
-        ${photoInStory ? photoFigure() : ''}
-        <div class="story-text">
+      <div class="story">
+        <div class="story-head">
           <h3>${T('about.storyTitle')}</h3>
-          ${A.paragraphs.slice(1).map((_, i) => `<p>${T('about.paragraphs.' + (i + 1))}</p>`).join('')}
-          <dl class="facts">${A.facts.map((_, i) => `<dt>${T(`about.facts.${i}.label`)}</dt><dd>${T(`about.facts.${i}.value`)}</dd>`).join('')}</dl>
-          <nav class="about-links" aria-label="Continue">
-            <a class="text-link" href="#experience">See my experience</a>
-            <a class="text-link" href="#projects">See my projects</a>
-            <a class="text-link" href="#top">Back to the rink</a>
-          </nav>
+          ${A.paragraphs[1] ? `<p>${T('about.paragraphs.1')}</p>` : ''}
         </div>
+        ${(A.scenes || []).map(chapterHTML).join('')}
       </div>
-      ${schoolsRow()}`;
+      ${universitiesHTML()}`;
   }
+  // a chapter's thumbnails switch its main photo (no automatic slides)
+  document.addEventListener('click', e => {
+    const t = e.target.closest('.ch-thumb'); if (!t) return;
+    const i = +t.dataset.ch, k = +t.dataset.k, m = chapterMedia(S.about.scenes[i])[k], main = document.querySelector(`.ch-main[data-ch="${i}"]`);
+    if (!m || !main) return;
+    main.querySelectorAll('video').forEach(v => v.pause());
+    main.innerHTML = mediaInner(m, false);
+    t.parentNode.querySelectorAll('.ch-thumb').forEach(x => x.toggleAttribute('aria-current', x === t));
+    if (t.hasAttribute('aria-current')) t.setAttribute('aria-current', 'true');
+  });
+
   /* =====================================================================
      EXPERIENCE — featured story cards + archive. All text comes from S.experience in content.js.
      ===================================================================== */
@@ -87,19 +141,19 @@
   const xLinks = l => { l = (l || []).filter(d => d && d.href); return l.length ? `<ul class="pd-links">${l.map(d => `<li><a class="text-link" href="${esc(d.href)}" target="_blank" rel="noopener noreferrer">${esc(d.label || d.href)}</a></li>`).join('')}</ul>` : ''; };
 
   // ---- FeaturedCard ----
-  function FeaturedCard([x]) {
-    const place = (x.location || '').split(',')[0];
+  function FeaturedCard([x, i]) {
+    const b = `experience.items.${i}.`, c = x.card || {};
     const media = x.coverImage
       ? `<img src="${esc(x.coverImage)}" alt="${esc(x.coverAlt || '')}" loading="lazy">`
-      : `<span class="xf-fb" aria-hidden="true"><span class="xf-fb-place">${esc(place)}</span><span class="xf-fb-date">${esc(x.date)}</span></span>`;
+      : `<span class="xf-fb" aria-hidden="true"><span class="xf-fb-place">${esc(x.organisation)}</span></span>`;
     return `<li><a class="xf-card" href="#experience-${esc(x.slug)}" data-exp="${esc(x.slug)}">
         <span class="xf-media">${media}</span>
         <span class="xf-text">
-          <span class="xf-cat">${esc(x.category)}</span>
-          <span class="xf-head">${esc(x.editorialHeadline)}</span>
-          <span class="xf-org">${esc(x.organisation)}</span>
-          <span class="xf-role">${esc(x.officialRole)}</span>
-          <span class="xf-meta">${esc(x.location)} · ${esc(x.date)}</span>
+          <span class="xf-role">${T(b + 'officialRole')}</span>
+          <span class="xf-org">${T(b + 'organisation')}</span>
+          <span class="xf-meta">${T(b + 'location')} · ${T(b + 'date')}</span>
+          ${c.what ? `<span class="xf-lbl">What I did</span><span class="xf-txt">${T(b + 'card.what')}</span>` : ''}
+          ${c.context ? `<span class="xf-lbl">${T(b + 'card.contextLabel')}</span><span class="xf-txt">${T(b + 'card.context')}</span>` : ''}
           <span class="xf-more">Read the story <span class="xf-arrow" aria-hidden="true">→</span></span>
         </span>
       </a></li>`;
@@ -133,7 +187,7 @@
       xHas(x.metricsNote) ? `<p class="xa-note">${T(b + '.metricsNote')}</p>` : '',
       xHas(x.responsibilities) ? `<h4 class="xa-label">${x.rich ? 'What I do' : 'Key responsibilities'}</h4>${xResp(b + '.responsibilities', x.responsibilities)}` : '',
       xHas(x.contributions) ? `<h4 class="xa-label">Contributions</h4>${xResp(b + '.contributions', x.contributions)}` : '',
-      xHas(x.skills) ? `<h4 class="xa-label">Skills applied</h4>${xChips(b + '.skills', x.skills)}` : '',
+      xHas(x.keySkills) ? `<h4 class="xa-label">Skills</h4>${xChips(b + '.keySkills', x.keySkills)}` : '',   // generic 'skills' lists are not shown
       xGallery(x.gallery),
       relatedHTML(x)
     ].join('');
@@ -154,8 +208,10 @@
     return `${E.intro ? `<p class="xp-intro">${T('experience.intro')}</p>` : ''}
       <h3 class="xp-h">${T('experience.featuredTitle')}</h3>
       <ul class="xf-grid">${XF().map(FeaturedCard).join('')}</ul>
-      <h3 class="xp-h">${T('experience.archiveTitle')}</h3>
-      <div class="xa">
+      <button type="button" class="xa-toggle" aria-expanded="false" aria-controls="${uid}-all">
+        <span>${T('experience.archiveTitle')} <b>(${XA().length})</b></span><span class="xa-toggle-sub">Sports events · Professional work · Athletic background</span><span class="xa-toggle-ico" aria-hidden="true"></span>
+      </button>
+      <div class="xa" id="${uid}-all" hidden>
         <div class="xa-filters" role="group" aria-label="Filter the archive">
           ${(E.filters || []).map((f, k) => `<button type="button" class="xa-f" data-f="${esc(f.id)}" aria-pressed="${k ? 'false' : 'true'}">${esc(f.label)}</button>`).join('')}
         </div>
@@ -164,6 +220,9 @@
       </div>`;
   }
 
+  // "Full experience list": shown on request
+  const setArchive = (btn, open) => { const box = $(btn.getAttribute('aria-controls')); if (!box) return; box.hidden = !open; btn.setAttribute('aria-expanded', open ? 'true' : 'false'); };
+  document.addEventListener('click', e => { const t = e.target.closest('.xa-toggle'); if (t) setArchive(t, t.getAttribute('aria-expanded') !== 'true'); });
   // accordion: one open at a time per list; filters show/hide entries without reloading
   function setEntry(item, open) {
     const btn = item.querySelector('.xa-head'), panelEl = item.querySelector('.xa-panel');
@@ -221,7 +280,7 @@
           ${xHas(ed.focus) ? `<p class="xe-focus"><b>Focus:</b> ${T(p + '.focus')}</p>` : ''}
           ${xHas(ed.overview) ? `<p>${T(p + '.overview')}</p>` : ''}
           ${xHas(ed.responsibilities) ? `<h5>Responsibilities</h5>${xResp(p + '.responsibilities', ed.responsibilities)}` : ''}
-          ${xHas(ed.skills) ? `<h5>Skills</h5>${xChips(p + '.skills', ed.skills)}` : ''}
+
           ${xGallery(ed.gallery)}
         </article>`; }).join('')}</div>` : '';
     return `
@@ -238,10 +297,10 @@
           <dl class="xd-facts">${facts}</dl>
         </header>
         ${sec('The Experience', xHas(x.overview) ? `<p class="xd-lead">${T(b + '.overview')}</p>` : '')}
-        ${eds.length ? sec('Two editions, two roles', editions) : ''}
+        ${eds.length ? sec('Two editions', editions) : ''}
         ${sec('What I Did', xResp(b + '.responsibilities', x.responsibilities))}
         ${sec('Contributions &amp; Impact', xMetrics(b + '.metrics', x.metrics) + xResp(b + '.contributions', x.contributions))}
-        ${sec('Skills Applied', xChips(b + '.skills', x.skills))}
+        ${xHas(x.keySkills) ? sec('Skills', xChips(b + '.keySkills', x.keySkills)) : ''}
         ${sec('Media', xGallery(x.gallery) + xLinks(x.mediaLinks))}
         <nav class="sp-nav" aria-label="Other featured experiences">
           <button type="button" class="vid-btn" data-ed-go="-1" ${fi === 0 ? 'disabled' : ''}>Previous</button>
@@ -320,6 +379,7 @@
     const f = XF().findIndex(([x]) => x.slug === slug);
     if (f >= 0) return openExp(f, null);
     const sec = $('experience'); if (!sec) return;
+    const tg = sec.querySelector('.xa-toggle'); if (tg) setArchive(tg, true);
     const all = sec.querySelector('.xa-f[data-f="all"]'); if (all && all.getAttribute('aria-pressed') !== 'true') all.click();
     const item = [...sec.querySelectorAll('.xa-item')].find(it => it.dataset.slug === slug);
     sec.scrollIntoView({ block: 'start', behavior: reduceMotion.matches ? 'auto' : 'smooth' });
@@ -338,31 +398,232 @@
      ===================================================================== */
   const PL = () => (S.projects && S.projects.list) || [];
   const statusClass = st => 's-' + String(st || 'planned').toLowerCase().replace(/[^a-z]+/g, '');
+  const RESULT = { deliverable: ['Deliverable', 'r-del'], target: ['Proposed target · not an achieved outcome', 'r-tgt'], progress: ['In progress', 'r-ip'] };
   function ProjectCard(p, i) {
-    const desc = p.shortDescription || (p.status === 'Completed' ? 'Details coming soon.' : 'This project is still taking shape. Details coming soon.');
-    return `<li class="pc-item">
-      <div class="pc" data-pc="${i}">
-        <div class="pc-inner">
-          <button type="button" class="pc-face pc-front" aria-expanded="false" aria-controls="pcb-${i}"
-            aria-label="${esc(`${p.title}. ${p.category} project. Show details`)}">
-            <span class="pc-top"><span class="pc-num">${esc(p.number || String(i + 1).padStart(2, '0'))}</span><span class="pc-cat">${esc(p.category)}</span></span>
-            ${p.cardImage ? `<span class="pc-art"><img src="${esc(p.cardImage)}" alt="" loading="lazy"></span>` : '<span class="pc-mark" aria-hidden="true"></span>'}
-            <span class="pc-title">${esc(p.title)}</span>
-            <span class="pc-hint" aria-hidden="true">Tap to turn</span>
-          </button>
-          <div class="pc-face pc-back" id="pcb-${i}" inert>
-            <span class="pc-status ${statusClass(p.status)}">${esc(p.status)}</span>
-            <h3 class="pc-btitle">${esc(p.title)}</h3>
-            <p class="pc-desc">${esc(desc)}</p>
-            <a class="pc-view" href="#project-${esc(p.slug)}" data-project="${esc(p.slug)}">View Project</a>
-            <button type="button" class="pc-turn" aria-label="Turn the card back over">Turn back</button>
-          </div>
-        </div>
-      </div>
+    const b = `projects.list.${i}.`, c = p.card || {}, r = RESULT[c.resultType];
+    const outLabel = c.resultType === 'target' ? 'Target' : c.resultType === 'progress' ? 'Status' : 'Outcome';
+    return `<li class="pj">
+      <article class="pj-card ${c.resultType ? 'k-' + c.resultType : ''}" aria-labelledby="pj-t-${i}">
+        <p class="pj-meta"><span class="pj-n">${esc(p.number || String(i + 1).padStart(2, '0'))}</span>${T(b + 'type')}</p>
+        <h3 class="pj-title" id="pj-t-${i}">${T(b + 'title')}</h3>
+        ${c.what ? `<p class="pj-what"><span class="pj-lbl">${esc(c.whatLabel || 'What I did')}</span>${T(b + 'card.what')}</p>` : ''}
+        ${r && c.result ? `<p class="pj-out"><span class="pj-lbl">${outLabel}</span><span class="pj-badge ${r[1]}">${r[0]}</span> <span class="pj-res">${T(b + 'card.result')}</span></p>` : ''}
+        <a class="pj-link" href="#project-${esc(p.slug)}" data-project="${esc(p.slug)}">View project <span aria-hidden="true">→</span></a>
+      </article>
     </li>`;
   }
-  const ProjectGrid = () => `<ul class="pgrid" aria-label="Projects">${PL().map(ProjectCard).join('')}</ul>`;
-  function projectsBody() { return ProjectGrid(); }
+  const ProjectGrid = () => `<ul class="pj-grid" aria-label="Projects">${PL().map((p, i) => p.hidden ? '' : ProjectCard(p, i)).join('')}</ul>`;
+  const shownIdx = () => PL().map((p, i) => p.hidden ? -1 : i).filter(i => i >= 0);   // projects visitors can see, in order
+  // ---- Projects page (Nov 2026): editorial showcase, one feature per project, data in S.projects.showcase ----
+  //      The older flip-card grid (ProjectGrid) is kept in code but no longer rendered.
+  const PS = () => (S.projects && S.projects.showcase) || [];
+  function pjVisual(v, path, cls) {
+    if (!v) return '';
+    const cap = v.caption ? `<figcaption>${T(path + '.caption')}</figcaption>` : '';
+    if (!v.src) return `<figure class="pjx-fig ${cls} pjx-missing"><div class="pjx-ph"><b>Screenshot needed</b>${esc(v.alt || '')}</div>${cap}</figure>`;
+    const wh = v.width && v.height ? ` width="${+v.width}" height="${+v.height}"` : '';
+    return `<figure class="pjx-fig ${cls}"><button type="button" class="pjx-zoom" data-pjx-lb="${esc(v.src)}" data-pjx-alt="${esc(v.alt || '')}" aria-label="View full size: ${esc(v.alt || '')}">
+        <img src="${esc(v.src)}" alt="${esc(v.alt || '')}"${wh} loading="lazy"></button>${cap}</figure>`;
+  }
+  // "showcase" layout (Nov 2026): intro → product views (tabs) → approach → contribution → evidence
+  function ProjectShowcase(p, i) {
+    const b = `projects.showcase.${i}`, has = v => Array.isArray(v) ? v.length > 0 : !!(v && String(v).trim());
+    const views = (p.views || []).filter(v => v && v.src), id = `pjv-${i}`;
+    const tabs = views.length > 1 ? `<div class="pjv-tabs" role="tablist" aria-label="Product views">${views.map((v, k) =>
+        `<button type="button" role="tab" id="${id}-t${k}" aria-controls="${id}-p${k}" aria-selected="${k === 0}" tabindex="${k === 0 ? 0 : -1}">${T(`${b}.views.${k}.label`)}</button>`).join('')}</div>` : '';
+    const panels = views.map((v, k) => `<figure class="pjv-panel" id="${id}-p${k}" aria-describedby="${id}-p${k}-c"${views.length > 1 ? ` role="tabpanel" aria-labelledby="${id}-t${k}"` : ''}${k ? ' hidden' : ''}>
+          <button type="button" class="pjv-zoom" data-pjx-lb="${esc(v.src)}" data-pjx-alt="${esc(v.alt || '')}" aria-label="View full size: ${esc(v.alt || '')}">
+            ${pjvImg(v, k)}</button>
+
+        </figure>`).join('');
+    // desktop: the whole screenshot. Mobile (with mobileCrop): the same image enlarged and framed on one real region.
+    function pjvImg(v, k) {
+      const img = `<img src="${esc(v.src)}" alt="${esc(v.alt || '')}"${v.width ? ` width="${+v.width}" height="${+v.height}"` : ''}${k ? ' loading="lazy"' : ''}>`;
+      const c = v.mobileCrop; if (!c || !v.width) return img;
+      const st = `--cw:${c.w};--ch:${c.h};--iw:${(v.width / c.w * 100).toFixed(3)}%;--ix:${(-c.x / c.w * 100).toFixed(3)}%;--iy:${(-c.y / c.w * 100).toFixed(3)}%`;
+      return `<span class="pjv-frame pjv-cropped" style="${st}">${img}</span>`;
+    }
+    const caps = views.map((v, k) => `<p class="pjv-cap" id="${id}-p${k}-c"${k ? ' hidden' : ''}>${has(v.caption) ? `<span>${T(`${b}.views.${k}.caption`)}</span>` : ''}${v.mobileCrop ? `<span class="pjv-detail">${esc(v.mobileCrop.label || 'Detail view')}. Tap to see the full screenshot.</span>` : ''}</p>`).join('');
+    const scope = has(p.evidence) || has(p.evidenceDetail) || has(p.limitation) ? `<div class="pjv-scope">
+            ${has(p.evidence) ? `<p class="pjv-scope-l">${has(p.evidenceLabel) ? `<b>${T(b + '.evidenceLabel')}</b>` : ''}${p.evidence.map((e, k) => `<span class="pjv-si">${T(`${b}.evidence.${k}.value`)} ${T(`${b}.evidence.${k}.label`)}</span>`).join('')}</p>` : ''}
+            ${has(p.evidenceDetail) ? `<p>${T(b + '.evidenceDetail')}</p>` : ''}
+            ${has(p.limitation) ? `<p>${T(b + '.limitation')}</p>` : ''}
+          </div>` : '';
+    const approach = has(p.approach) ? `<dl class="pjv-approach">${p.approach.map((a, k) => `<div><dt>${T(`${b}.approach.${k}.label`)}</dt><dd>${T(`${b}.approach.${k}.text`)}</dd></div>`).join('')}</dl>` : '';
+    const c = p.contribution || {}, cb = b + '.contribution';
+    // "My role": parts before the workflow (Design) sit above it; the workflow part (flow) is drawn as a connected
+    // sequence; parts after it (Test & review) continue the line with a dashed segment, as human work.
+    const r = p.role || {}, rb = b + '.role', parts = r.parts || [], fi = parts.findIndex(x => has(x.flow));
+    const head = (x, k) => `<h5><span class="pjv-n">${String(k + 1).padStart(2, '0')} /</span>${T(`${rb}.parts.${k}.label`)}</h5>`;
+    const before = (fi < 0 ? parts : parts.slice(0, fi)).map((x, k) => `<div class="pjw-intro${x.primary ? ' pjv-main' : ''}">${head(x, k)}
+            ${has(x.text) ? `<p class="pjv-ptext">${T(`${rb}.parts.${k}.text`)}</p>` : ''}
+            ${has(x.tags) ? `<p class="pjv-tags">${x.tags.map((_, z) => `<span>${T(`${rb}.parts.${k}.tags.${z}`)}</span>`).join('<i aria-hidden="true">·</i>')}</p>` : ''}</div>`).join('');
+    let track = '';
+    if (fi >= 0) {
+      const fp = parts[fi], fb = `${rb}.parts.${fi}`, after = parts.slice(fi + 1), n = fp.flow.length + after.length;
+      const st = (inner, k, cls, hd) => `<li class="pjw-st${cls}" tabindex="0" data-k="${k}">
+              <span class="pjw-gh">${hd || ''}</span>
+              <span class="pjw-line" aria-hidden="true"><span class="pjw-dot"></span>${k < n - 1 ? '<span class="pjw-seg"><i></i></span>' : ''}</span>
+              ${inner}</li>`;
+      const steps = fp.flow.map((f, z) => st(`<span class="pjv-step">${T(`${fb}.flow.${z}.step`)}</span><span class="pjv-tool">${T(`${fb}.flow.${z}.tool`)}</span>`,
+          z, z === fp.flow.length - 1 && after.length ? ' pjw-tohuman' : '',
+          z === 0 ? `${head(fp, fi)}${has(fp.note) ? `<span class="pjv-pnote">${T(fb + '.note')}</span>` : ''}` : ''));
+      const tail = after.map((x, j) => { const k = fi + 1 + j, xb = `${rb}.parts.${k}`;
+        return st(`${has(x.step) ? `<span class="pjv-step">${T(xb + '.step')}</span>` : ''}${has(x.text) ? `<span class="pjw-text">${T(xb + '.text')}</span>` : ''}`,
+          fp.flow.length + j, ' pjw-human', head(x, k)); });
+      track = `<ol class="pjw-track" aria-label="How the tool works, then my review">${steps.concat(tail).join('')}</ol>`;
+    }
+    const contrib = parts.length ? `<section class="pjv-role pjw" aria-labelledby="${id}-role">
+          <div class="pjw-top pjv-rv">
+            <div class="pjw-title">
+              ${has(r.label) ? `<p class="pjv-k">${T(rb + '.label')}</p>` : ''}
+              ${has(r.title) ? `<h4 id="${id}-role">${T(rb + '.title')}</h4>` : ''}
+            </div>
+            ${before}
+          </div>
+          ${track ? `<div class="pjv-rv">${track}</div>` : ''}
+        </section>` : '';
+    const links = (p.links || []).filter(l => l && l.href && !l.hidden);
+    const evid = `<footer class="pjv-end">
+          ${has(p.disclaimer) ? `<p>${T(b + '.disclaimer')}</p>` : ''}
+          ${has(p.tech) && !has(r.parts) ? `<p class="pjv-tech">${p.tech.map((_, k) => T(`${b}.tech.${k}`)).join('<span aria-hidden="true"> · </span>')}</p>` : ''}
+          ${links.length ? `<p class="pjx-links">${links.map(l => `<a class="pjx-link" href="${esc(l.href)}" target="_blank" rel="noopener noreferrer">${esc(l.label || 'View project')} <span aria-hidden="true">↗</span></a>`).join('')}</p>` : ''}
+        </footer>`;
+    return `<article class="pjv" id="project-${esc(p.slug || i)}" aria-labelledby="pjv-t-${i}">
+        <header class="pjv-intro">
+          <p class="pjv-k pjv-rv">${esc(p.number || String(i + 1).padStart(2, '0'))}${has(p.category) ? ` / ${T(b + '.category')}` : ''}</p>
+          <h3 class="pjv-rv" id="pjv-t-${i}">${T(b + '.title')}</h3>
+          ${has(p.question) || has(p.summary) ? `<div class="pjv-pair pjv-rv">
+            ${has(p.question) ? `<p class="pjv-q">${T(b + '.question')}</p>` : ''}
+            ${has(p.summary) ? `<p class="pjv-sum">${T(b + '.summary')}</p>` : ''}
+          </div>` : ''}
+        </header>
+        ${views.length ? `<section class="pjv-show" aria-label="The working tool">
+          ${tabs || views.length > 0 ? `<div class="pjv-bar">${tabs}<p class="pjv-hint">Click a screenshot to view it full size</p></div>` : ''}
+          <div class="pjv-stage pjv-rv">${panels}</div>
+          <div class="pjv-under"><div class="pjv-caps">${caps}</div>${scope}</div>
+          ${approach}
+        </section>` : ''}
+        ${contrib}
+        ${evid}
+      </article>`;
+  }
+  function ProjectFeature(p, i) {
+    const b = `projects.showcase.${i}`, has = v => Array.isArray(v) ? v.length > 0 : !!(v && String(v).trim());
+    const ev = has(p.evidence) ? `<div class="pjx-ev">
+        ${has(p.evidenceLabel) ? `<p class="pjx-evl">${T(b + '.evidenceLabel')}</p>` : ''}
+        <dl>${p.evidence.map((e, k) => `<div><dt>${T(`${b}.evidence.${k}.value`)}</dt><dd>${T(`${b}.evidence.${k}.label`)}</dd></div>`).join('')}</dl>
+        ${has(p.evidenceDetail) ? `<p class="pjx-detail">${T(b + '.evidenceDetail')}</p>` : ''}</div>` : '';
+    const notes = (p.notes || []).filter(n => n && n.text).map((n, k) => `<div class="pjx-n">${has(n.label) ? `<h4>${T(`${b}.notes.${k}.label`)}</h4>` : ''}<p>${T(`${b}.notes.${k}.text`)}</p></div>`).join('');
+    const links = (p.links || []).filter(l => l && l.href && !l.hidden);
+    const foot = `<footer class="pjx-foot">
+        <div>${has(p.limitation) ? `<p class="pjx-note">${T(b + '.limitation')}</p>` : ''}
+        ${has(p.tech) ? `<p class="pjx-tech">${p.tech.map((_, k) => T(`${b}.tech.${k}`)).join(' · ')}</p>` : ''}</div>
+        ${links.length ? `<p class="pjx-links">${links.map(l => `<a class="pjx-link" href="${esc(l.href)}" target="_blank" rel="noopener noreferrer">${esc(l.label || 'View project')} <span aria-hidden="true">↗</span></a>`).join('')}</p>` : ''}
+      </footer>`;
+    return `<article class="pjx pjx-${esc(p.layout || 'hero')}" id="project-${esc(p.slug || i)}" aria-labelledby="pjx-t-${i}">
+        <div class="pjx-top">
+          <div class="pjx-head">
+            <h3 class="pjx-title" id="pjx-t-${i}">${T(b + '.title')}</h3>
+            ${has(p.subtitle) ? `<p class="pjx-sub">${T(b + '.subtitle')}</p>` : ''}
+            ${has(p.intro) ? `<p class="pjx-intro">${T(b + '.intro')}</p>` : ''}
+          </div>
+          <div class="pjx-visual">${pjVisual(p.visual, b + '.visual', 'pjx-main')}${ev}</div>
+        </div>
+        ${notes || p.secondary ? `<div class="pjx-detailrow">${pjVisual(p.secondary, b + '.secondary', 'pjx-second')}<div class="pjx-notes">${notes}</div></div>` : ''}
+        ${foot}
+      </article>`;
+  }
+  function projectsBody() {
+    // "showcase" projects get a preview in the index and their own case-study page (#project-<slug>);
+    // other layouts still render inline as before
+    const items = PS().map((p, i) => [p, i]).filter(([p]) => !p.hidden);
+    const idx = items.filter(([p]) => p.layout === 'showcase'), inline = items.filter(([p]) => p.layout !== 'showcase');
+    return `${idx.length ? `<ol class="pji-list">${idx.map(([p, i]) => ProjectPreview(p, i)).join('')}</ol>` : ''}${inline.length ? `<div class="pjx-list">${inline.map(([p, i]) => ProjectFeature(p, i)).join('')}</div>` : ''}`;
+  }
+  // one row in the Projects index: real image, title, one line, and a link to the case study
+  function ProjectPreview(p, i) {
+    const b = `projects.showcase.${i}`, has = v => Array.isArray(v) ? v.length > 0 : !!(v && String(v).trim());
+    const pv = p.preview || {}, v = (p.views || [])[0] || {}, img = pv.src || v.src;
+    const pos = pv.position || 'left top';
+    return `<li class="pji pjv-rv">
+        <a class="pji-link" href="#project-${esc(p.slug)}" data-case="${esc(p.slug)}" aria-labelledby="pji-t-${i}" aria-describedby="pji-d-${i}">
+          <span class="pji-text">
+            <span class="pji-k">${esc(p.number || String(i + 1).padStart(2, '0'))}${has(p.category) ? ` / ${T(b + '.category')}` : ''}</span>
+            <span class="pji-t" id="pji-t-${i}">${T(b + '.title')}</span>
+            ${has(p.summary) ? `<span class="pji-d" id="pji-d-${i}">${T(b + '.summary')}</span>` : ''}
+            <span class="pji-go">View case study <span aria-hidden="true">→</span></span>
+          </span>
+          ${img ? `<span class="pji-img"><img src="${esc(img)}" alt="" loading="lazy" style="object-position:${esc(pos)}"></span>` : ''}
+        </a>
+      </li>`;
+  }
+  // the case-study page (same layer as the older project pages, so menus, Escape and Back behave the same)
+  function CaseStudy(ci) {
+    const p = PS()[ci];
+    return `
+      <div class="sp-bar">
+        <button type="button" class="sp-back" data-pd-close>← Back to Projects</button>
+        <span class="sp-count">Case study</span>
+      </div>
+      <div class="sp-scroll pjc-scroll">
+        ${ProjectShowcase(p, ci)}
+        <nav class="sp-nav pjc-nav" aria-label="Projects"><button type="button" class="vid-btn" data-pd-close>← Back to Projects</button></nav>
+      </div>`;
+  }
+  // gentle one-time entrance for the project (same timing as Experience); nothing hidden with reduced motion or without IO
+  function pjvReveal(root) {
+    root = root || $('projects'); if (!root) return;
+    const items = root.querySelectorAll('.pjv-rv:not(.in)'); if (!items.length) return;
+    if (!('IntersectionObserver' in window) || reduceMotion.matches) { items.forEach(x => x.classList.add('in')); return; }
+    root.querySelectorAll('.pjv, .pji-list').forEach(a => a.classList.add('anim')); if (root.id === 'projects') root.classList.add('pj-anim');
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    items.forEach(x => io.observe(x));
+  }
+  // Dashboard / Comments tabs: click, or arrow keys / Home / End once a tab has focus
+  function pjvSelect(t, focus) {
+    const list = t.closest('[role=tablist]'), tabs = [...list.querySelectorAll('[role=tab]')];
+    tabs.forEach(x => { const on = x === t; x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; const pid = x.getAttribute('aria-controls'), pn = document.getElementById(pid), cp = document.getElementById(pid + '-c'); if (pn) { pn.hidden = !on; if (on && !reduceMotion.matches) { pn.classList.remove('pjv-fade'); void pn.offsetWidth; pn.classList.add('pjv-fade'); } } if (cp) cp.hidden = !on; });
+    if (focus) t.focus();
+  }
+  document.addEventListener('click', e => { const t = e.target.closest('.pjv-tabs [role=tab]'); if (t) pjvSelect(t); });
+  // My role workflow: the step under the pointer, keyboard focus or last tap is "on"; the line leading into it lights up
+  function pjwSet(tr, st) {
+    const all = [...tr.querySelectorAll('.pjw-st')], k = st ? all.indexOf(st) : -1;
+    all.forEach((x, j) => { x.classList.toggle('on', j === k); x.classList.toggle('feed', j === k - 1); });
+    tr.classList.toggle('has-on', k >= 0);
+  }
+  document.addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return; const st = e.target.closest && e.target.closest('.pjw-st'); if (st) pjwSet(st.parentElement, st); });
+  document.addEventListener('pointerout', e => { if (e.pointerType !== 'mouse') return; const tr = e.target.closest && e.target.closest('.pjw-track'); if (tr && !tr.contains(e.relatedTarget)) pjwSet(tr, tr.contains(document.activeElement) ? document.activeElement.closest('.pjw-st') : null); });
+  document.addEventListener('focusin', e => { const st = e.target.closest && e.target.closest('.pjw-st'); if (st) pjwSet(st.parentElement, st); });
+  document.addEventListener('focusout', e => { const tr = e.target.closest && e.target.closest('.pjw-track'); if (tr && !tr.contains(e.relatedTarget)) pjwSet(tr, null); });
+  // tap / click: light the step without moving keyboard focus (so no focus ring appears); a tap elsewhere clears it
+  document.addEventListener('click', e => {
+    const st = e.target.closest('.pjw-st');
+    if (st && !editing()) { if (e.detail === 0) return; pjwSet(st.parentElement, st); return; }
+    document.querySelectorAll('.pjw-track.has-on').forEach(tr => { if (!tr.contains(document.activeElement) && !tr.matches(':hover')) pjwSet(tr, null); });
+  });
+  document.addEventListener('keydown', e => {
+    const t = e.target.closest && e.target.closest('.pjv-tabs [role=tab]'); if (!t) return;
+    const tabs = [...t.parentElement.querySelectorAll('[role=tab]')], k = tabs.indexOf(t);
+    const n = { ArrowRight: k + 1, ArrowLeft: k - 1, Home: 0, End: tabs.length - 1 }[e.key]; if (n == null) return;
+    e.preventDefault(); pjvSelect(tabs[(n + tabs.length) % tabs.length], true);
+  });
+  // screenshot lightbox: dashboards are detailed, so a click shows them full size (Escape / × / click outside closes)
+  let pjxLb = null;
+  function pjxOpen(src, alt, opener) {
+    if (!pjxLb) {
+      pjxLb = document.createElement('dialog'); pjxLb.className = 'ms-lb pjx-lb'; pjxLb.setAttribute('aria-label', 'Screenshot');
+      pjxLb.innerHTML = '<button type="button" class="ms-lb-x" aria-label="Close screenshot">×</button><img alt="">';
+      document.body.appendChild(pjxLb);
+      pjxLb.addEventListener('click', e => { if (e.target === pjxLb || e.target.closest('.ms-lb-x')) pjxLb.close(); });
+      pjxLb.addEventListener('keydown', e => { if (e.key === 'Tab') { e.preventDefault(); pjxLb.querySelector('.ms-lb-x').focus(); } });
+      pjxLb.addEventListener('close', () => { if (pjxLb._opener && document.contains(pjxLb._opener)) pjxLb._opener.focus({ preventScroll: true }); });
+    }
+    const im = pjxLb.querySelector('img'); im.src = src; im.alt = alt || '';
+    pjxLb._opener = opener; pjxLb.showModal(); pjxLb.querySelector('.ms-lb-x').focus();
+  }
+  document.addEventListener('click', e => { const z = e.target.closest('[data-pjx-lb]'); if (z && !editing()) pjxOpen(z.dataset.pjxLb, z.dataset.pjxAlt, z); });
 
   // flipping: one card at a time; clicking the turned card (or "Turn back") turns it over again
   let flipped = null;
@@ -400,7 +661,7 @@
   const projectPageOpen = () => !!(pdEl && !pdEl.hidden);
   const has = v => Array.isArray(v) ? v.filter(x => x && (typeof x !== 'object' || x.src || x.href)).length > 0 : !!(v && String(v).trim());
   function ProjectDetail(i) {
-    const p = PL()[i], b = `projects.list.${i}.`, n = PL().length;
+    const p = PL()[i], b = `projects.list.${i}.`, shown = shownIdx(), n = shown.length, at = shown.indexOf(i);
     const txt = k => has(p[k]) ? `<p>${T(b + k)}</p>` : '';
     const list = (k, h) => has(p[k]) ? `${h ? `<h4>${h}</h4>` : ''}<ul class="pd-list">${p[k].map((_, x) => `<li>${T(b + k + '.' + x)}</li>`).join('')}</ul>` : '';
     const chips = (k, h) => has(p[k]) ? `<h4>${h}</h4><ul class="pd-chips">${p[k].map((_, x) => `<li>${T(b + k + '.' + x)}</li>`).join('')}</ul>` : '';
@@ -416,13 +677,16 @@
       section('Outcomes &amp; Learnings', list('outcomes', 'Results &amp; deliverables') + list('learnings', 'Key takeaways') + chips('skillsDeveloped', 'Skills developed')),
       section('Project Gallery', (gallery.length ? `<div class="sp-photos">${gallery.map(g => `<figure class="pd-fig"><img src="${esc(g.src)}" alt="${esc(g.alt || '')}" loading="lazy">${g.caption ? `<figcaption>${esc(g.caption)}</figcaption>` : ''}</figure>`).join('')}</div>` : '')
         + (docs.length || links.length ? `<ul class="pd-links">${docs.concat(links).map(d => `<li><a class="text-link" href="${esc(d.href)}" target="_blank" rel="noopener noreferrer">${esc(d.label || d.href)}</a></li>`).join('')}</ul>` : ''))
-    ].join('') : `<div class="pd-soon"><p>${msg}</p>
-        ${has(p.shortDescription) ? `<p class="pd-sd">${T(b + 'shortDescription')}</p>` : ''}</div>`;
+    ].join('') : (p.card && p.card.what ? `<section class="pd-sec"><h3>${esc(p.card.whatLabel || 'What I did')}</h3><p>${T(b + 'card.what')}</p></section>
+        ${p.card.result ? `<section class="pd-sec"><h3>${p.card.resultType === 'target' ? 'Target' : p.card.resultType === 'progress' ? 'Status' : 'Outcome'}</h3><p><span class="pj-badge ${(RESULT[p.card.resultType] || [])[1] || ''}">${(RESULT[p.card.resultType] || [''])[0]}</span> ${T(b + 'card.result')}</p></section>` : ''}
+        <p class="pd-soon-note">Full project write-up coming soon.</p>`
+      : `<div class="pd-soon"><p>${msg}</p>
+        ${has(p.shortDescription) ? `<p class="pd-sd">${T(b + 'shortDescription')}</p>` : ''}</div>`);
     const meta = [p.category && `${esc(p.category)} project`, has(p.type) && T(b + 'type'), has(p.year) && T(b + 'year')].filter(Boolean).join('<span aria-hidden="true"> · </span>');
     return `
       <div class="sp-bar">
         <button type="button" class="sp-back" data-pd-close>← Back to Projects</button>
-        <span class="sp-count">Project ${i + 1} of ${n}</span>
+        <span class="sp-count">Project ${at + 1} of ${n}</span>
       </div>
       <div class="sp-scroll">
         <header class="pd-head">
@@ -433,9 +697,9 @@
         </header>
         <div class="pd-body">${body}</div>
         <nav class="sp-nav" aria-label="Other projects">
-          <button type="button" class="vid-btn" data-pd-go="-1" ${i === 0 ? 'disabled' : ''}>Previous project</button>
+          <button type="button" class="vid-btn" data-pd-go="-1" ${at <= 0 ? 'disabled' : ''}>Previous project</button>
           <button type="button" class="vid-btn" data-pd-close>Back to Projects</button>
-          <button type="button" class="vid-btn" data-pd-go="1" ${i === n - 1 ? 'disabled' : ''}>Next project</button>
+          <button type="button" class="vid-btn" data-pd-go="1" ${at >= n - 1 ? 'disabled' : ''}>Next project</button>
         </nav>
       </div>`;
   }
@@ -445,7 +709,7 @@
     pdEl.setAttribute('aria-labelledby', 'pdTitle');
     pdEl.querySelectorAll('[data-pd-close]').forEach(b => b.addEventListener('click', () => closeProject()));
     pdEl.querySelectorAll('[data-pd-go]').forEach(b => b.addEventListener('click', () => {
-      const to = pdIdx + (+b.dataset.pdGo); if (to < 0 || to >= PL().length) return;
+      const sh = shownIdx(), to = sh[sh.indexOf(pdIdx) + (+b.dataset.pdGo)]; if (to === undefined) return;
       anim(pdEl.querySelector('.sp-scroll'), [{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out' }).then(() => {
         renderProject(to); setProjectHash(to);
         anim(pdEl.querySelector('.sp-scroll'), [{ opacity: 0, transform: `translateX(${(+b.dataset.pdGo) * 30}px)` }, { opacity: 1, transform: 'translateX(0)' }], { duration: 380 });
@@ -453,9 +717,18 @@
       });
     }));
   }
+  let pdCase = -1;
+  const caseFromSlug = slug => PS().findIndex(p => p.slug === slug && !p.hidden && p.layout === 'showcase');
   function openProject(slugOrIdx, opener, fromHash) {
+    const ci = typeof slugOrIdx === 'string' ? caseFromSlug(slugOrIdx) : -1;
+    if (ci >= 0) return openCase(ci, opener, fromHash);
+    pdCase = -1;
     const i = typeof slugOrIdx === 'number' ? slugOrIdx : PL().findIndex(p => p.slug === slugOrIdx);
-    if (i < 0) return;
+    if (i < 0 || PL()[i].hidden) return;
+    pdEnsure();
+    openProjectLayer(i, opener, fromHash);
+  }
+  function pdEnsure() {
     if (!pdEl) {
       pdEl = document.createElement('div'); pdEl.className = 'sp pd'; pdEl.hidden = true;
       pdEl.setAttribute('role', 'dialog'); pdEl.setAttribute('aria-modal', 'true');
@@ -469,6 +742,30 @@
         }
       });
     }
+  }
+  function pdBeforeOpen(opener) {
+    if (panel.open) panel.close();
+    if (expPageOpen()) closeExp();
+    if (aboutIsOpen()) closeAbout();
+    if (schoolPageOpen()) closeSchoolPage();
+    pauseVideo();
+  }
+  function openCase(ci, opener, fromHash) {
+    pdEnsure(); pdBeforeOpen(opener);
+    pdCase = ci; pdIdx = -1; pdOpener = opener || null; pdFromLink = !fromHash; pdClosing = false; pdSource = 'case';
+    pdEl.innerHTML = CaseStudy(ci); pdEl.classList.add('pjc');
+    const h = pdEl.querySelector('.pjv-intro h3'); if (h) { h.tabIndex = -1; pdEl.setAttribute('aria-labelledby', h.id); }
+    pdEl.querySelectorAll('[data-pd-close]').forEach(b => b.addEventListener('click', () => closeProject()));
+    if (!fromHash) { try { history.replaceState(null, '', '#project-' + PS()[ci].slug); } catch (_) {} }
+    const wasOpen = projectPageOpen();
+    pdEl.hidden = false; pdEl.querySelector('.sp-scroll').scrollTop = 0;
+    BG().forEach(el => el.inert = true); document.documentElement.classList.add('am-lock');
+    if (!wasOpen) anim(pdEl, [{ opacity: 0, transform: 'translateX(48px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 380 });
+    if (h) h.focus({ preventScroll: true });
+    pjvReveal(pdEl);
+  }
+  function openProjectLayer(i, opener, fromHash) {
+    pdEl.classList.remove('pjc');
     // remember which card view it came from, so "Back to Projects" returns there
     pdSource = opener && opener.closest && opener.closest('#panel') ? 'panel' : opener && opener.closest && opener.closest('#projects .pgrid') ? 'section' : 'other';
     if (pdSource === 'panel') pdPanelScroll = $('panelBody').scrollTop;
@@ -494,6 +791,14 @@
     pdEl.hidden = true; pdClosing = false;
     if (!aboutIsOpen() && !schoolPageOpen() && !expPageOpen()) { BG().forEach(el => el.inert = false); document.documentElement.classList.remove('am-lock'); }
     if (/^#project-/.test(location.hash)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {} }
+    // case study: back to its row in the Projects index
+    if (pdCase >= 0) {
+      const slug = PS()[pdCase] && PS()[pdCase].slug; pdCase = -1;
+      const row = document.querySelector(`#projects [data-case="${slug}"]`), sec = $('projects');
+      if (row) { row.scrollIntoView({ block: 'center', behavior: 'instant' }); row.focus({ preventScroll: true }); }
+      else if (sec) sec.scrollIntoView({ block: 'start', behavior: 'instant' });
+      return;
+    }
     // always back to the card view: the Projects pop-up, or the Projects section on the page
     const slugNow = PL()[pdIdx] && PL()[pdIdx].slug;
     document.querySelectorAll('.pc.flipped').forEach(c => setFlip(c, false)); flipped = null;   // every card back on its front
@@ -515,8 +820,11 @@
     }
   }
   window.openProject = openProject;
-  const projectFromHash = () => { const m = /^#project-(.+)$/.exec(location.hash); return m ? PL().findIndex(p => p.slug === m[1]) : -1; };
-  window.addEventListener('hashchange', () => { const i = projectFromHash(); if (i >= 0) openProject(i, null, true); else if (projectPageOpen() && !/^#project-/.test(location.hash)) closeProject(); });
+  const projectFromHash = () => { const m = /^#project-(.+)$/.exec(location.hash); return m ? PL().findIndex(p => p.slug === m[1] && !p.hidden) : -1; };   // hidden (older) projects can't be opened by link
+  const caseFromHash = () => { const m = /^#project-(.+)$/.exec(location.hash); return m ? caseFromSlug(m[1]) : -1; };
+  window.addEventListener('hashchange', () => { const c = caseFromHash(); if (c >= 0) { if (!(projectPageOpen() && pdCase === c)) openCase(c, null, true); return; } const i = projectFromHash(); if (i >= 0) openProject(i, null, true); else if (projectPageOpen() && !/^#project-/.test(location.hash)) closeProject(); });
+  // index rows open the case study (links still work as plain #project- links without this)
+  document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[data-case]'); if (!a || editing() || e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); openProject(a.dataset.case, a); });
 
   // only real values become links: no placeholder buttons
   function contactLinks() {
@@ -532,54 +840,87 @@
       return `<div class="edit-contact">
         ${row('LinkedIn link', 'contact.linkedin', 'https://www.linkedin.com/in/your-name')}
         ${row('Email', 'contact.email', 'name@example.com')}
-        ${row('CV link', 'contact.cvLink', 'a shared link to your CV, e.g. Google Drive')}
+        ${row('CV link', 'contact.cvLink', 'a link to your CV file, e.g. assets/chloe-jeong-cv.pdf')}
       </div>`;
     }
-    const links = contactLinks();
-    return links.length ? `<div class="contact-links">${links.join('')}</div>` :
-      (S.showTodo ? `<div class="todo"><b>To add:</b> LinkedIn link, email address and CV link</div>` : '<p>Contact details coming soon.</p>');
+    const C = S.contact, loc = C.card && C.card.location;
+    const acts = [];
+    if (C.email) acts.push(`<a class="ct-btn primary" href="mailto:${esc(C.email)}">Email me</a>`);
+    if (C.linkedin) acts.push(`<a class="ct-btn" href="${esc(C.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>`);
+    if (C.cvLink) acts.push(`<a class="ct-btn" href="${esc(C.cvLink)}" target="_blank" rel="noopener">Download CV</a>`);   // appears once a CV link is set in content.js
+    if (!acts.length) return S.showTodo ? `<div class="todo"><b>To add:</b> LinkedIn link, email address and CV link</div>` : '';
+    return `<div class="ct">
+        <div class="ct-text">
+          ${C.email ? `<p class="ct-mail"><span>${esc(C.email)}</span><button type="button" class="ct-copy" data-copy="${esc(C.email)}">Copy</button></p>` : ''}
+          ${loc ? `<p class="ct-loc">Based in ${esc(loc)}</p>` : ''}
+        </div>
+        <div class="ct-actions">${acts.join('')}</div>
+      </div>`;
   }
-  function glanceBody() {
-    const xps = XF();
-    const pi = PL().findIndex(p => p.featured);
-    const links = contactLinks();
-    const mine = (p, what) => get(p) ? `<p class="mine"><b>My role:</b> ${T(p)}</p>` : todo(p, what);
-    return `<div class="glance">
-      <div>
-        <p class="statement">${T('glance.lookingFor')}</p>
-        <p>${joinList(S.hero.keywords.map((_, i) => T('hero.keywords.' + i)))}.</p>
-        ${S.glance.availability ? `<p>${T('glance.availability')}</p>` : ''}
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('.ct-copy'); if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copied'; }
+    catch (_) { b.textContent = 'Select and copy'; }
+    setTimeout(() => { b.textContent = 'Copy'; }, 2000);
+  });
+  // right below the rink: About Me - portrait, introduction, education, then CV-style lists
+  function profileBody() {
+    const P = S.profile || {}, C = S.contact || {};
+    const ic = {
+      mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+      li: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.5h4V21H3zM9.5 9.5h3.8v1.6h.06c.53-1 1.83-2.06 3.77-2.06 4.03 0 4.77 2.65 4.77 6.1V21h-4v-5.1c0-1.22-.02-2.78-1.7-2.78-1.7 0-1.96 1.32-1.96 2.69V21h-4z"/></svg>',
+      pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+      globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>',
+      award: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="m8.6 13.9-1.6 7.1 5-2.8 5 2.8-1.6-7.1"/></svg>'
+    };
+    const contact = [
+      C.email ? `<li>${ic.mail}<a href="mailto:${esc(C.email)}">${esc(C.email)}</a></li>` : '',
+      C.linkedin ? `<li>${ic.li}<a href="${esc(C.linkedin)}" target="_blank" rel="noopener">LinkedIn</a></li>` : '',
+      P.location ? `<li>${ic.pin}<span>${T('profile.location')}</span></li>` : '',
+      P.languages ? `<li>${ic.globe}<span>${T('profile.languages')}</span></li>` : ''
+    ].join('');
+    const edu = (P.education || []).map((e, k) => `<li${e.current ? ' class="now"' : ''}><span class="ab-yr">${T(`profile.education.${k}.years`)}</span>
+        <div><h4>${T(`profile.education.${k}.title`)}</h4><p class="ab-sub">${T(`profile.education.${k}.sub`)}</p>${e.detail ? `<p class="ab-detail">${T(`profile.education.${k}.detail`)}</p>` : ''}</div>${e.logo ? `<img class="ab-logo" src="${esc(e.logo)}" alt="" aria-hidden="true" loading="lazy">` : ''}</li>`).join('');   // school logos: one navy tone, desktop only
+    const list = (key, cls) => (P[key] || []).map((x, k) => `<li>
+        <div class="ab-head"><h4><b>${T(`profile.${key}.${k}.role`)}</b> <span class="ab-dash">-</span> <span class="ab-org">${T(`profile.${key}.${k}.org`)}</span></h4><span class="ab-date">${T(`profile.${key}.${k}.date`)}</span></div>
+        <p class="ab-loc">${T(`profile.${key}.${k}.location`)}</p>
+        <ul>${(x.points || []).map((_, j) => `<li>${T(`profile.${key}.${k}.points.${j}`)}</li>`).join('')}</ul></li>`).join('');
+    // certification sits in the left profile column, under the languages (qualification code stays in content.js only)
+    const certs = (P.certifications || []).map((c, k) => `<li>${ic.award}<span><span class="ab-cr-n">${T(`profile.certifications.${k}.name`)}</span><span class="ab-cr-o">${T(`profile.certifications.${k}.org`)}</span></span></li>`).join('');
+    return `<div class="ab">
+      <div class="ab-top">
+        <div class="ab-left">
+          <figure class="ab-photo">${P.photo ? `<img src="${esc(P.photo)}" alt="${esc(P.photoAlt || S.hero.name)}">` : ''}
+            ${P.greeting ? `<span class="ab-hello" aria-hidden="true">${esc(P.greeting)}</span>` : ''}</figure>
+          <p class="ab-name">${T('hero.name')}</p>
+          ${P.keywords ? `<p class="ab-keys">${T('profile.keywords')}</p>` : ''}
+          <ul class="ab-contact">${contact}</ul>
+          ${certs ? `<ul class="ab-contact ab-cred" aria-label="Certification">${certs}</ul>` : ''}
+        </div>
+        <div class="ab-right">
+          <p class="ab-lbl">About me</p>
+          ${P.statement ? `<p class="ab-h">${T('profile.statement')}</p>` : ''}
+          <div class="ab-intro">${(P.intro || []).map((_, k) => `<p>${T('profile.intro.' + k)}</p>`).join('')}
+            <div class="ab-ctas">${S.about.video && S.about.video.src ? `<a class="ab-meet" href="#my-story" data-story-open data-story-video aria-label="Meet Chloe: watch my 19-second introduction video"><span class="ab-play" aria-hidden="true"></span><span class="ab-meet-t">Meet Chloe</span><span class="ab-dur" aria-hidden="true">0:19</span></a>` : ''}<a class="ab-story" href="#my-story" data-story-open data-story-chapter="1"><span class="ab-story-t">Read my story</span> <span class="ab-arr" aria-hidden="true">↗</span></a></div></div>
+          ${edu ? `<div class="ab-edu"><h3 class="ab-lbl">Education</h3><ol class="ab-tl">${edu}</ol></div>` : ''}
+        </div>
       </div>
-      <dl>
-        <dt>Most relevant experience</dt>
-        <dd>${xps.map(([x, i]) => { const b = `experience.items.${i}.`; return `<div class="g-item">
-            <div class="g-role">${T(b + 'officialRole')}</div>
-            <div class="g-org">${T(b + 'organisation')}, ${T(b + 'location')}, ${T(b + 'date')}</div>
-            <a class="text-link" href="#experience-${esc(x.slug)}" data-exp="${esc(x.slug)}">Read the story</a>
-          </div>`; }).join('')}</dd>
-        <dt>Featured project</dt>
-        <dd>${pi >= 0 ? `<div class="g-item">
-            <div class="g-role">${T(`projects.list.${pi}.title`)}</div>
-            <div class="g-org">${T(`projects.list.${pi}.type`)}</div>
-            ${mine(`projects.list.${pi}.myRole`, 'your role in one sentence')}
-            <a class="text-link" href="#project-${esc(PL()[pi].slug)}" data-project="${esc(PL()[pi].slug)}">View project</a>
-          </div>` : ''}</dd>
-        <dt>Contact</dt>
-        <dd>${links.length ? `<div class="contact-links">${links.join('')}</div>` : (S.showTodo ? '<div class="todo"><b>To add:</b> LinkedIn, email and CV link</div>' : 'Coming soon')}</dd>
-      </dl>
+      ${/* Professional / International experience lists: hidden since the Experience page covers them (data kept in content.js) */ ''}
     </div>`;
   }
+  const glanceBody = profileBody;   // older name, kept so nothing else breaks
 
   const SECTIONS = {
-    glance:     { title: 'glance.title', body: glanceBody },
-    about:      { title: 'about.title', body: aboutBody },
-    experience: { title: 'experience.title', lead: 'experience.subtitle', body: experienceBody },
-    projects:   { title: 'projects.title', lead: 'projects.intro', body: projectsBody },
+    about:      { title: 'about.title', body: profileBody },
+    experience: { title: 'experience.title', lead: 'experience.subtitle', body: () => (window.XE ? window.XE.html : experienceBody()) },   // editorial page from experience.js; old cards as fallback
+    projects:   { title: 'projects.title', lead: S.projects && S.projects.intro ? 'projects.intro' : null, body: projectsBody },
     contact:    { title: 'contact.title', lead: 'contact.intro', body: contactBody }
   };
   const sectionHTML = (id, inPanel) => {
     const s = SECTIONS[id];
-    return (inPanel ? '' : `<h2>${T(s.title)}</h2>`) + (s.lead ? `<p class="lead">${T(s.lead)}</p>` : '') + s.body();
+    // Projects: heading and its line share one row, on the same grid as the project rows below
+    if (id === 'projects' && !inPanel) return `<div class="pj-head pjv-rv"><h2>${T(s.title)}</h2>${s.lead ? `<p class="lead">${T(s.lead)}</p>` : ''}</div>` + s.body();
+    return (inPanel ? '' : `<h2${id === 'about' ? ' class="vh"' : ''}>${T(s.title)}</h2>`) + (s.lead ? `<p class="lead">${T(s.lead)}</p>` : '') + s.body();
   };
 
   /* ---------------- pop-up for Experience / Projects ---------------- */
@@ -587,7 +928,8 @@
   let returnFocus = null;
   function closePanel() { if (panel.open) panel.close(); }
   window.openPanel = function (id) {
-    if (id === 'about') return openAbout(document.activeElement, 0);   // About has its own pop-up
+    if (id === 'about') return openStory(document.activeElement);                 // the arena's "My Story" opens the story view
+    if (id === 'experience' || id === 'projects') return goToSection(id);          // same place as the menu: the section on the page
     pauseVideo();
     if (!SECTIONS[id] || typeof panel.showModal !== 'function') { const el = $(id); if (el) el.scrollIntoView({ block: 'start' }); return; }
     returnFocus = document.activeElement;
@@ -1236,8 +1578,7 @@
     cmOpener = opener && opener !== document.body ? opener : null;
     BG().forEach(el => el.inert = true); document.documentElement.classList.add('am-lock');
     // 1) the skater stops, the light warms up and she bows + waves; 2) then the card rises
-    const wait = window.__rinkContact ? window.__rinkContact(true) : 0;
-    if (wait > 0) { cmGreet = setTimeout(showContactCard, wait); return; }
+    if (window.__rinkContact) window.__rinkContact(true);           // the bow + warm light still play, but the card does not wait for them
     showContactCard();
   }
   function cancelGreet() {                                            // Esc during the bow: skip the card
@@ -1292,10 +1633,11 @@
   function renderAll() {
     $('heroName').innerHTML = T('hero.name');
     $('heroTagline').innerHTML = T('hero.tagline');
-    $('heroKeys').innerHTML = `${T('hero.status')}: ${joinList(S.hero.keywords.map((_, i) => `<strong>${T('hero.keywords.' + i)}</strong>`))}.`;
-    $('heroBtn').innerHTML = T('hero.button');
+    $('heroKeys').innerHTML = T('hero.intro');
     $('heroHint').innerHTML = T('hero.hint');
     Object.keys(SECTIONS).forEach(id => { $(id).innerHTML = sectionHTML(id); });
+    if (window.XE) window.XE.init($('experience'));
+    pjvReveal();
     document.querySelectorAll('[data-open-about]').forEach(b => b.addEventListener('click', () => openAbout(b, +b.dataset.openAbout || 0)));
     buildAboutModal();
     if (panel.open && panel.dataset.section) { $('panelTitle').innerHTML = T(SECTIONS[panel.dataset.section].title); $('panelBody').innerHTML = sectionHTML(panel.dataset.section, true); }
@@ -1305,15 +1647,15 @@
   }
   renderAll();
   { const i0 = schoolFromHash(); if (i0 >= 0) setTimeout(() => window.openSchoolPage(i0, true), 300); }
-  { const p0 = projectFromHash(); if (p0 >= 0) setTimeout(() => openProject(p0, null, true), 300); }
+  { const c0 = caseFromHash(), p0 = projectFromHash(); if (c0 >= 0) setTimeout(() => openCase(c0, null, true), 300); else if (p0 >= 0) setTimeout(() => openProject(p0, null, true), 300); }
   { const e0 = expFromHash(); if (e0 >= 0) setTimeout(() => openExp(e0, null, true), 300); }
+  if (location.hash === '#my-story') setTimeout(() => openStory(null, true), 300);
   document.addEventListener('click', e => {
     const a = e.target.closest('a[href="#contact"]');
     if (!a || editing() || a.closest('.am, .sp, .cm, dialog')) return;
     e.preventDefault(); openContact(a);
     if (a.hasAttribute('data-mail-open')) { const go = () => { const b = $('cmMailBtn'); if (b && $('cmMail').hidden) b.click(); }; cmGreet ? setTimeout(go, 2100) : go(); }
   });
-  document.querySelectorAll('.topbar a[href="#about"]').forEach(a => { a.textContent = 'About Me'; });
   // menu About Me / Experience / Projects: the skater jumps on screen, the title appears at the landing, then the page scrolls
   const NAV_JUMPS = { about: ['2A', 'About Me'], experience: ['3Lo', 'Experience'], projects: ['3Lz', 'Projects'] };
   const goToSection = id => {
@@ -1330,19 +1672,255 @@
       if (editing() || e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;   // new-tab clicks keep working
       e.preventDefault();
       const title = get(SECTIONS[id].title) || J[1];
-      if (window.skateNav) window.skateNav.go(id, J[0], { title, navigate: () => goToSection(id) });
-      else goToSection(id);
+      goToSection(id);                                               // content first, straight away
+      if (window.skateNav) window.skateNav.go(id, J[0], { title, navigate: () => {} });   // the jump plays on its own, never in the way
     });
   });
 
-  // highlight the menu item of the section on screen
-  const navLinks = [...document.querySelectorAll('.topbar nav a')];
-  const io = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (e.isIntersecting) navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+  // hero buttons (About Me / Experience / Projects): open straight away; the skater's jump plays behind, like the top menu
+  const HERO_JUMPS = { about: ['2A', 'About Me'], experience: ['3Lo', 'Experience'], projects: ['3Lz', 'Projects'] };
+  document.querySelectorAll('[data-hero-go]').forEach(a => {
+    a.addEventListener('click', e => {
+      if (editing() || e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;   // new-tab clicks keep working
+      e.preventDefault();
+      const id = a.dataset.heroGo, J = HERO_JUMPS[id];
+      goToSection(id);                                                  // opens straight away, same as the top menu (About Me = the About section, not My Story)
+      if (window.skateNav && J) window.skateNav.go(id, J[0], { title: J[1], navigate: () => {} });   // the jump still plays on the rink, behind it
     });
-  }, { rootMargin: '-45% 0px -50% 0px' });
-  document.querySelectorAll('main .section').forEach(s => io.observe(s));
+  });
+
+  // highlight the menu item of the section being read: the last section whose heading has passed
+  // a reading line a third of the way down the screen (none on the rink or "At a glance"; Contact at the very bottom)
+  const navLinks = [...document.querySelectorAll('.topbar nav a')];
+  const navIds = navLinks.map(a => (a.getAttribute('href') || '').slice(1));
+  let navTick = 0;
+  function updateActiveNav() {
+    navTick = 0;
+    const headerH = (document.querySelector('.topbar') || {}).offsetHeight || 64;
+    const line = headerH + (innerHeight - headerH) * 0.33;
+    let cur = null;
+    document.querySelectorAll('main .section').forEach(sec => {
+      const mark = sec.querySelector('h2') || sec;
+      if (mark.getBoundingClientRect().top <= line) cur = sec.id;
+    });
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) cur = 'contact';
+    if (!navIds.includes(cur)) cur = null;
+    navLinks.forEach(a => {
+      const on = a.getAttribute('href') === '#' + cur;
+      a.classList.toggle('active', on);
+      if (on) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current');
+    });
+  }
+  addEventListener('scroll', () => { if (!navTick) navTick = requestAnimationFrame(updateActiveNav); }, { passive: true });
+  addEventListener('resize', () => { if (!navTick) navTick = requestAnimationFrame(updateActiveNav); });
+  updateActiveNav();
+
+
+  /* =====================================================================
+     MY STORY — full-screen view at #my-story (same frame as the other detail pages).
+     Five chapters read top to bottom; the page underneath (and the 3D arena) keep their state.
+     ===================================================================== */
+  let msEl = null, msOpener = null, msClosing = false, msIO = null, msY = 0, msPushed = false, msBackPending = false;
+  const storyOpen = () => !!(msEl && !msEl.hidden);
+  window.isStoryOpen = storyOpen;
+  const SC = () => (S.about.scenes || []);
+  function storyChapter(sc, i) {
+    const b = `about.scenes.${i}.`, paras = Array.isArray(sc.text) ? sc.text : [sc.text], media = chapterMedia(sc);
+    const tp = k => T(b + (Array.isArray(sc.text) ? 'text.' + k : 'text'));
+    const rest = paras.slice(1).map((_, k) => `<p>${tp(k + 1)}</p>`).join('');
+    const ex = sc.extras && sc.extras.items && sc.extras.items.length
+      ? `<p class="ch-extras"><b>${T(b + 'extras.label')}:</b> ${sc.extras.items.map((_, k) => T(b + 'extras.items.' + k)).join(', ')}</p>` : '';
+    const isGoals = /GOALS/i.test(sc.place || '') && S.sponsors;
+    const unis = isGoals ? S.sponsors.map((sp, k) => [sp, k]).filter(([sp]) => /Lille|Mykolas|LUNEX/i.test(sp.name)).sort((a, b) => ['Lille', 'Mykolas', 'LUNEX'].findIndex(n => a[0].name.includes(n)) - ['Lille', 'Mykolas', 'LUNEX'].findIndex(n => b[0].name.includes(n)))
+      .map(([sp, k]) => `<button type="button" class="ms-uni" data-school="${k}">${esc(sp.name)}</button>`).join('') : '';
+    return `<article class="ch ms-ch" id="ms-ch-${i + 1}" aria-labelledby="ms-t-${i}">
+        ${media.length ? `<div class="ch-media">
+          <div class="ch-main" data-ch="${i}">${mediaInner(media[0])}</div>
+          ${media.length > 1 ? `<div class="ch-thumbs" role="group" aria-label="${esc(sc.title)}: choose a photo">
+            ${media.map((m, k) => `<button type="button" class="ch-thumb" data-ch="${i}" data-k="${k}" aria-label="${esc((m.video ? 'Video: ' : 'Photo: ') + (m.alt || 'photo ' + (k + 1)))}"${k ? '' : ' aria-current="true"'}>
+              <img src="${esc(m.poster || m.src)}" alt="" loading="lazy">${m.video ? '<span class="ch-play" aria-hidden="true"></span>' : ''}</button>`).join('')}
+          </div>` : ''}
+        </div>` : ''}
+        <div class="ch-text">
+          <p class="ch-kicker"><span class="ch-n">${String(i + 1).padStart(2, '0')}</span>${sc.place ? T(b + 'place') : ''}</p>
+          <h3 id="ms-t-${i}">${T(b + 'title')}</h3>
+          <p>${tp(0)}</p>${rest}${ex}
+          ${unis ? `<div class="ms-goals"><p class="ms-goals-h"><b>Erasmus Mundus GOALS Master's</b> <span>2025–2027</span></p><div class="ms-unis" role="group" aria-label="GOALS universities">${unis}</div></div>` : ''}
+          ${i < SC().length - 1 ? `<a class="ms-next" href="#ms-ch-${i + 2}" data-ms-go="${i + 2}">Next: ${esc(SC()[i + 1].title)} <span aria-hidden="true">↓</span></a>` : ''}
+        </div>
+      </article>`;
+  }
+  // ---- My Story (Nov 2026): one continuous editorial page, three chapters, data in S.about.story ----
+  const MS = () => (S.about.story || { chapters: [] });
+  function storyChapterNew(c, i) {
+    const b = `about.story.chapters.${i}.`, n = String(i + 1).padStart(2, '0');
+    const fig = c.image ? `<figure class="ms2-fig ms-rv"><button type="button" class="ms2-zoom" data-ms-lb="${i}" aria-label="Enlarge photo: ${esc(c.alt || c.title)}">
+        <img src="${esc(c.image)}" alt="${esc(c.alt || '')}" loading="lazy"></button></figure>` : '';
+    return `<article class="ms2-ch ms2-${esc(c.layout || 'text-left')}" id="ms-ch-${i + 1}" aria-labelledby="ms-t-${i}">
+        ${fig}
+        <div class="ms2-text">
+          <p class="ms2-n ms-rv">Chapter ${n}</p>
+          <h3 class="ms-rv" id="ms-t-${i}">${T(b + 'title')}</h3>
+          ${(c.text || []).map((_, k) => `<p>${T(b + 'text.' + k)}</p>`).join('')}
+        </div>
+      </article>`;
+  }
+  function storyHTML() {
+    const A = S.about, V = A.video || {}, st = MS(), CH = st.chapters || [];
+    return `<div class="sp-bar ms-bar">
+        <button type="button" class="sp-back" data-ms-close>← Back to portfolio</button>
+        <nav class="ms-steps" aria-label="Story chapters">${CH.map((c, k) => `<a href="#ms-ch-${k + 1}" data-ms-go="${k + 1}"><span class="ms-step-n">${String(k + 1).padStart(2, '0')}</span><span class="ms-step-t">${esc(c.title)}</span></a>`).join('')}</nav>
+      </div>
+      <div class="sp-scroll ms-scroll ms2">
+        <header class="ms-open">
+          <div>
+            <p class="pf-kicker">My story</p>
+            <h2 class="ms-title" id="msTitle" tabindex="-1">${T('about.story.title')}</h2>
+            ${st.subtitle ? `<p class="ms-sub">${T('about.story.subtitle')}</p>` : ''}
+          </div>
+          ${V.src ? `<figure class="ms-vid" id="msVid"><video controls playsinline preload="none" ${V.poster ? `poster="${esc(V.poster)}"` : ''} aria-label="${esc(V.label || 'Meet Chloe')}: a short video introduction">
+            <source src="${esc(V.src)}" type="video/mp4">${V.captions ? `<track kind="captions" srclang="en" label="English" src="${esc(V.captions)}" default>` : ''}</video>
+            <button type="button" class="ms-vid-play" id="msVidPlay" hidden><span class="ab-play" aria-hidden="true"></span>Play with sound</button>
+            <figcaption>${T('about.video.label')} · 0:19</figcaption></figure>` : ''}
+        </header>
+        ${CH.map(storyChapterNew).join('')}
+        <footer class="ms2-end">
+          <p>${T('about.story.closing')}</p>
+          <button type="button" class="ms2-exp ms-exp">${T('about.story.cta')} <span aria-hidden="true">→</span></button>
+        </footer>
+      </div>
+      <dialog class="ms-lb" aria-label="Photo">
+        <button type="button" class="ms-lb-x" aria-label="Close photo">×</button>
+        <img alt="">
+      </dialog>`;
+  }
+  function storyGo(n, instant) {
+    const ch = msEl && msEl.querySelector('#ms-ch-' + n), box = msEl && msEl.querySelector('.ms-scroll');
+    if (!ch || !box) return;
+    const top = ch.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 24;
+    box.scrollTo({ top, behavior: instant || reduceMotion.matches ? 'auto' : 'smooth' });
+  }
+  function storyWatch() {
+    const box = msEl.querySelector('.ms-scroll'), chs = [...msEl.querySelectorAll('.ms2-ch')], steps = [...msEl.querySelectorAll('.ms-steps a')];
+    const update = () => {
+      if (!box.clientHeight) return;
+      const line = box.getBoundingClientRect().top + box.clientHeight * 0.4; let cur = -1;
+      chs.forEach((c, k) => { if (c.getBoundingClientRect().top <= line) cur = k; });
+      if (box.scrollTop + box.clientHeight >= box.scrollHeight - 4) cur = chs.length - 1;
+      steps.forEach((a, k) => k === cur ? a.setAttribute('aria-current', 'step') : a.removeAttribute('aria-current'));
+    };
+    let tick = 0; box.addEventListener('scroll', () => { if (!tick) tick = requestAnimationFrame(() => { tick = 0; update(); }); }, { passive: true });
+    update(); addEventListener('load', update, { once: true }); addEventListener('resize', () => { if (storyOpen()) update(); });
+    // reveal photo + heading once, when a chapter comes into view (content stays visible without JS / with reduced motion)
+    if ('IntersectionObserver' in window && !reduceMotion.matches) {
+      box.classList.add('ms-anim');
+      const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('ms-in'); io.unobserve(e.target); } }), { root: box, threshold: 0.12 });
+      chs.forEach(c => io.observe(c));
+    }
+  }
+  function openLightbox(i) {
+    const c = (MS().chapters || [])[i], lb = msEl.querySelector('.ms-lb'); if (!c || !lb || typeof lb.showModal !== 'function') return;
+    const im = lb.querySelector('img'); im.src = c.image; im.alt = c.alt || '';
+    lb.dataset.from = i; lb.showModal(); lb.querySelector('.ms-lb-x').focus();
+  }
+  function closeLightbox() {
+    const lb = msEl && msEl.querySelector('.ms-lb'); if (!lb || !lb.open) return;
+    lb.close();
+  }
+  function buildStory() {
+    msEl = document.createElement('div'); msEl.className = 'sp ms'; msEl.hidden = true;
+    msEl.setAttribute('role', 'dialog'); msEl.setAttribute('aria-modal', 'true'); msEl.setAttribute('aria-labelledby', 'msTitle');
+    document.body.appendChild(msEl);
+    msEl.addEventListener('keydown', e => {
+      const lbOpen = msEl.querySelector('.ms-lb[open]');
+      if (lbOpen) { if (e.key === 'Tab') { e.preventDefault(); lbOpen.querySelector('.ms-lb-x').focus(); } return; }   // keep focus on the close button                                   // the photo lightbox handles its own Escape / focus
+      if (e.key === 'Escape' && !schoolPageOpen()) { e.preventDefault(); closeStory(); }
+      if (e.key === 'Tab') {
+        const f = [...msEl.querySelectorAll('button:not([disabled]), a[href], video[controls]')].filter(x => x.offsetParent !== null); if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+      }
+    });
+    msEl.addEventListener('close', e => { const lb = e.target; if (!lb.classList || !lb.classList.contains('ms-lb')) return; const z = msEl.querySelector(`[data-ms-lb="${lb.dataset.from}"]`); if (z) z.focus({ preventScroll: true }); }, true);
+    msEl.addEventListener('click', e => {
+      if (e.target.closest('[data-ms-close]')) { closeStory(); return; }
+      const z = e.target.closest('[data-ms-lb]'); if (z) { openLightbox(+z.dataset.msLb); return; }
+      const lb = e.target.closest('.ms-lb');
+      if (lb) { if (e.target.closest('.ms-lb-x') || e.target === lb) closeLightbox(); return; }
+      const go = e.target.closest('[data-ms-go]'); if (go) { e.preventDefault(); storyGo(+go.dataset.msGo); return; }
+      const c = e.target.closest('.ms-cont');
+      if (c) { const more = $(c.getAttribute('aria-controls')); const open = more.hidden; more.hidden = !open; c.setAttribute('aria-expanded', open ? 'true' : 'false'); c.textContent = open ? 'Show less' : 'Continue reading'; if (open) { const p = more.querySelector('p'); if (p) { p.setAttribute('tabindex', '-1'); p.focus({ preventScroll: true }); } } return; }
+      if (e.target.closest('.ms-exp')) { closeStory({ leaving: true }).then(() => goToSection('experience')); return; }
+      if (e.target.closest('a[href="#contact"]')) { e.preventDefault(); e.stopPropagation(); closeStory().then(() => openContact(null)); return; }
+      const u = e.target.closest('.ms-uni'); if (u && window.openSchoolPage) window.openSchoolPage(+u.dataset.school);
+    });
+  }
+  function openStory(opener, fromHash, toVideo, toChapter) {
+    if (!msEl) buildStory();
+    if (panel.open) panel.close();
+    if (schoolPageOpen()) closeSchoolPage();
+    if (projectPageOpen()) closeProject();
+    if (expPageOpen()) closeExp();
+    if (contactIsOpen && contactIsOpen() && window.closeContact) window.closeContact();
+    pauseVideo();
+    const was = storyOpen();
+    if (!was) msY = window.scrollY;               // the homepage position to come back to
+    msOpener = opener && opener !== document.body ? opener : null; msClosing = false;
+    if (!was) msEl.innerHTML = storyHTML();
+    msEl.hidden = false;
+    if (!was) storyWatch();                       // measure once the view is on screen
+    BG().forEach(el => el.inert = true); document.documentElement.classList.add('am-lock');
+    if (!fromHash && location.hash !== '#my-story') { try { history.pushState({ story: 1 }, '', '#my-story'); msPushed = true; } catch (_) {} }
+    if (!was) anim(msEl, [{ opacity: 0, transform: 'translateY(24px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 360 });
+    const v = msEl.querySelector('#msVid video');
+    if (toVideo && v) {                                   // "Meet Chloe": top of My Story, the intro video starts
+      msEl.querySelector('.ms-scroll').scrollTop = 0;
+      v.focus({ preventScroll: true });
+      playIntro(v);
+    } else if (toChapter) {                               // "Read my story": straight to the written chapter, no video
+      $('msTitle').focus({ preventScroll: true });
+      requestAnimationFrame(() => requestAnimationFrame(() => storyGo(toChapter, true)));
+    } else $('msTitle').focus({ preventScroll: true });
+  }
+  // play the intro with sound; if the browser blocks it, show a clear "Play with sound" button instead of playing muted
+  function playIntro(v) {
+    const btn = msEl.querySelector('#msVidPlay');
+    const showBtn = () => { if (btn) btn.hidden = false; };
+    v.muted = false;
+    let p; try { p = v.play(); } catch (_) { showBtn(); return; }
+    if (p && p.catch) p.catch(showBtn);
+    if (btn && !btn.dataset.wired) {
+      btn.dataset.wired = '1';
+      btn.addEventListener('click', () => { btn.hidden = true; v.muted = false; v.play().catch(() => { btn.hidden = false; }); v.focus({ preventScroll: true }); });
+      v.addEventListener('play', () => { btn.hidden = true; });
+    }
+  }
+  async function closeStory(opts = {}) {
+    if (!storyOpen() || msClosing) return;
+    msClosing = true;
+    msEl.querySelectorAll('video').forEach(v => v.pause()); closeLightbox();
+    await anim(msEl, [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(24px)' }], { duration: 200, easing: 'ease-in' });
+    msEl.hidden = true; msClosing = false;
+    if (!aboutIsOpen() && !schoolPageOpen() && !projectPageOpen() && !expPageOpen()) { BG().forEach(el => el.inert = false); document.documentElement.classList.remove('am-lock'); }
+    window.scrollTo({ top: msY, behavior: 'instant' });   // back exactly where the visitor was (some browsers reset it while the page was locked)
+    if (location.hash === '#my-story') {
+      if (msPushed && !opts.fromHistory && !opts.leaving) { msPushed = false; msBackPending = true; history.back(); }   // undo our own history step (popstate then sees the story closed)
+      else { try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {} }
+    }
+    if (opts.fromHistory) msPushed = false;
+    if (msOpener && document.contains(msOpener)) msOpener.focus({ preventScroll: true });
+    if (!opts.leaving) requestAnimationFrame(() => { if (Math.abs(window.scrollY - msY) > 2) window.scrollTo({ top: msY, behavior: 'instant' }); });
+  }
+  window.openStory = openStory; window.closeStory = closeStory;
+  document.addEventListener('click', e => {
+    const a = e.target.closest('[data-story-open], .topbar a[href="#my-story"]'); if (!a || editing()) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;
+    e.preventDefault(); openStory(a, false, a.hasAttribute('data-story-video'), +a.dataset.storyChapter || 0);
+    if (a.closest('.topbar') && window.skateNav) window.skateNav.go('about', '2A', { title: 'My Story', navigate: () => {} });   // the jump still plays on the rink, behind the view
+  });
+  const storyFromHistory = () => { if (msBackPending) { msBackPending = false; window.scrollTo({ top: msY, behavior: 'instant' }); return; } if (location.hash === '#my-story') { if (!storyOpen()) openStory(null, true); } else if (storyOpen()) closeStory({ fromHistory: true }); };
+  window.addEventListener('popstate', storyFromHistory);
+  window.addEventListener('hashchange', storyFromHistory);
 
   /* =====================================================================
      OWNER TEXT EDITOR — only the site's owner sees "Edit text".
