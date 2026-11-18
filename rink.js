@@ -5,7 +5,7 @@
 (function () {
   const OBJECTS = [
     // move: 열 때 캐릭터가 보여주는 피겨 기술 (spiral / jump / eagle)
-    { id: 'about',      label: 'About Me',   kind: 'fragment',      move: 'spiral' }, // floating memory fragment
+    { id: 'about',      label: 'My Story',   kind: 'fragment',      move: 'spiral' }, // floating memory fragment → opens the My Story view
     { id: 'experience', label: 'Experience', kind: 'constellation', move: 'jump' },   // small constellation
     { id: 'projects',   label: 'Projects',   kind: 'portal',        move: 'eagle' }   // glowing portal
   ];
@@ -16,11 +16,20 @@
   const W = 22, D = 13, R = 2.6;       // rink size (bigger ice for the school logos)
   // spread around the arena, away from the headline in the top-left: [x, z, base height, facing]
   //   About Me: far stands, centre-right · Experience: right-end stands · Projects: near stands, left
-  const PLACE = {
-    fragment:      [1.8, -(D / 2 + 2.2), 1.05, 0],
-    constellation: [W / 2 + 2.9, -4.9, 1.55, -Math.PI / 2],
-    portal:        [-8.3, D / 2 + 2.4, 1.05, Math.PI * 0.85]
+  // My Story · Experience · Projects sit together in one block of stands: [x, z, base height, facing]
+  // wide screens: the far stands, centre-right (clear of the intro text on the left), between the school banners
+  // tall screens: the far end of the rink, either side of the tunnel
+  const PLACE_WIDE = {
+    fragment:      [2.4, -(D / 2 + 2.2), 1.05, 0],
+    constellation: [6.4, -(D / 2 + 2.2), 1.05, 0],
+    portal:        [10.2, -8.17, 1.05, -0.40]          // on the curve of the stands
   };
+  const PLACE_TALL = {
+    fragment:      [W / 2 + 2.2, -3.9, 1.05, -Math.PI / 2],
+    constellation: [W / 2 + 2.9, 0, 1.55, -Math.PI / 2],   // floating above the tunnel entrance, a step higher
+    portal:        [W / 2 + 2.2, 3.9, 1.05, -Math.PI / 2]
+  };
+  const PLACE = PLACE_WIDE;
   const TAP_MOVE_PX = 8;               // more than this = drag (camera), not a tap
   const DOUBLE_TAP_MS = 320;
 
@@ -40,7 +49,8 @@
 
   // HTML labels are real buttons: always upright and readable, work without 3D and with the keyboard
   let activate = o => openSection(o.id);
-  const labelBtns = OBJECTS.map(o => {
+  // the three navigation objects have moved out of the arena into the hero text (site.js): no labels, no 3D objects
+  const labelBtns = [].map(o => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'obj-label';
     b.innerHTML = `${o.label}<small>Open</small>`;
@@ -388,14 +398,16 @@
   }
   const flagsList = (RINKCFG.flags || []).filter(f => f && f.code);
   const flags = [];
+  let flagWire = null, flagsTall = null;
   const FLAG_W = 1.35, FLAG_H = 0.9, FLAG_Z = -(D / 2 - 0.5), FLAG_TOP = 8.5, WIRE_Y = 13.2, FLAG_X0 = -0.4, FLAG_X1 = 10.9;   // right half, above the banners, clear of the intro text
   if (flagsList.length) {
     const wireMat = soft(0x3A4370, 0.6);
     // phones (tall screens) look along the rink from the -x end, so the row hangs across the far +x end instead
     const tall = rinkEl.clientWidth / Math.max(1, rinkEl.clientHeight) < 0.9;
-    const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, (tall ? D : W) + 2, 8), wireMat);
+    flagWire = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, (tall ? D : W) + 2, 8), wireMat);
+    const wire = flagWire;
     if (tall) { wire.rotation.x = Math.PI / 2; wire.position.set(W / 2 - 1.2, WIRE_Y, 0); } else { wire.rotation.z = Math.PI / 2; wire.position.set(0, WIRE_Y, FLAG_Z); }
-    arena.add(wire);
+    arena.add(wire); flagsTall = tall;
     flagsList.forEach((f, i) => {
       const n = flagsList.length, a0 = tall ? -(D / 2 - 1) : FLAG_X0, a1 = tall ? D / 2 - 1 : FLAG_X1;
       const x = n > 1 ? a0 + i * (a1 - a0) / (n - 1) : (a0 + a1) / 2;
@@ -414,6 +426,23 @@
     });
   }
   const flagHits = flags.map(fl => fl.cloth);
+  // the flag row follows the screen shape: along the far side on wide screens, across the far end on tall ones.
+  // Re-applied when the shape changes after the scene was built (page opened in a resizing frame, phone rotated, window resized).
+  function layoutFlags(tall) {
+    if (!flags.length || tall === flagsTall) return;
+    flagsTall = tall;
+    const n = flags.length, a0 = tall ? -(D / 2 - 1) : FLAG_X0, a1 = tall ? D / 2 - 1 : FLAG_X1;
+    flagWire.rotation.set(tall ? Math.PI / 2 : 0, 0, tall ? 0 : Math.PI / 2);
+    flagWire.scale.y = ((tall ? D : W) + 2) / (((flagWire.geometry.parameters || {}).height) || 1);
+    if (tall) flagWire.position.set(W / 2 - 1.2, WIRE_Y, 0); else flagWire.position.set(0, WIRE_Y, FLAG_Z);
+    flags.forEach((fl, i) => {
+      const x = n > 1 ? a0 + i * (a1 - a0) / (n - 1) : (a0 + a1) / 2;
+      const y = fl.grp.position.y;
+      if (tall) { fl.grp.position.set(W / 2 - 1.2, y, x); fl.grp.rotation.set(0, -Math.PI / 2, 0); }
+      else { fl.grp.position.set(x, y, FLAG_Z); fl.grp.rotation.set(0, 0, 0); }
+      fl.x = x;
+    });
+  }
   let flagsT = -1;                                                   // starts when the rink is first drawn
   function updateFlags(dt, calm) {
     if (!flags.length) return;
@@ -490,7 +519,6 @@
   const seatSpots = [];
   STANDS.forEach((s, i) => aroundRink(s.off, 0.62).forEach(p => {
     if (p.x > W / 2 && Math.abs(p.z - GATE_Z) < 1.5) return;        // leave the tunnel clear
-    if (Object.values(PLACE).some(([ox, oz]) => Math.hypot(p.x - ox, p.z - oz) < 1.9)) return;   // room for About Me / Experience / Projects   // room for About / Experience / Projects
     seatSpots.push({ ...p, y: s.h, row: i });
   }));
   const seatGeo = new THREE.BoxGeometry(0.44, 0.32, 0.38); seatGeo.translate(0, 0.16, 0);
@@ -558,7 +586,7 @@
 
   // ---------- explorable objects (kept low and toward the edges so they never fill the screen) ----------
   // About / Experience / Projects sit up in the far stands: [x, z, base height]
-  const objects = OBJECTS.map((def, i) => {
+  const objects = [].map((def, i) => {
     const [x, z, base, face] = PLACE[def.kind];
     const g = new THREE.Group(); g.position.set(x, base, z); g.rotation.y = face; arena.add(g);
     const o = { def, group: g, anchor: new THREE.Vector3(x, base, z), hit: [], near: false, glow: 0, label: labelBtns[i] };
@@ -647,10 +675,13 @@
   //  CAMERA: orbit around the rink centre (360° horizontal, limited vertical, zoom)
   // =====================================================================
   const cam = { az: 0, el: 0.46, r: 22, tAz: 0, tEl: 0.46, tR: 22 };
-  const R_MIN = 4.2, EL_MIN = THREE.MathUtils.degToRad(7), EL_MAX_ABS = THREE.MathUtils.degToRad(72);
+  // zoom range is set from the default framing in startView(): about 0.62x (closest) to 1.12x (farthest) of the start distance
+  const ZOOM_IN = 0.62, ZOOM_OUT = 1.12, CLOSE_R = 4.2;
+  let R_MIN = 13.5; const EL_MIN = THREE.MathUtils.degToRad(7), EL_MAX_ABS = THREE.MathUtils.degToRad(72);
   let R_MAX = 30, START = { az: 0, el: 0.46, r: 22 };
   const camTarget = new THREE.Vector3(0, 2.2, 0);
   let closeness = 0;
+  let camTouched = false;   // set once the visitor drags, pinches or zooms; until then every resize re-frames the view
 
   function startView() {
     const w = rinkEl.clientWidth, h = rinkEl.clientHeight, aspect = w / h;
@@ -659,9 +690,10 @@
     // on tall screens look along the rink's long side so the skater is bigger
     const az = portrait ? -Math.PI / 2 : 0;          // tunnel stays at the far end, not in front
     const halfAcross = (portrait ? D / 2 + 0.8 : W / 2 + 1.4);
-    const r = halfAcross / Math.tan(hf / 2) + (portrait ? W / 2 : D / 2) * 0.6;
+    const r = (halfAcross / Math.tan(hf / 2) + (portrait ? W / 2 : D / 2) * 0.6)
+      * (portrait ? (aspect < 0.6 ? 1.0 : 1.16) : 1.13);   // phones are already wide enough                     // a little wider than a tight fit: more of the arena, skater still clear
     const el = THREE.MathUtils.degToRad(portrait ? 30 : 25);
-    R_MAX = Math.max(28, r * 1.15);
+    R_MIN = r * ZOOM_IN; R_MAX = r * ZOOM_OUT;
     return { az, el, r };
   }
   const maxElFor = r => Math.min(EL_MAX_ABS, Math.asin(Math.min(1, (CEIL - 2 - camTarget.y) / r)));
@@ -676,14 +708,15 @@
     cam.az = cam.tAz + Math.atan2(Math.sin(cam.az - cam.tAz), Math.cos(cam.az - cam.tAz));
     if (instant || reduceMotion.matches) { cam.az = cam.tAz; cam.el = cam.tEl; cam.r = cam.tR; }
   }
-  if (resetBtn) resetBtn.addEventListener('click', e => { e.stopPropagation(); resetView(false); });
+  if (resetBtn) resetBtn.addEventListener('click', e => { e.stopPropagation(); camTouched = false; resetView(false); });
   resetBtn && resetBtn.addEventListener('pointerdown', e => e.stopPropagation());
 
   function updateCamera(dt, heroPos) {
     const k = reduceMotion.matches ? 1 : Math.min(1, dt * 10);
-    cam.az += (cam.tAz - cam.az) * k; cam.el += (cam.tEl - cam.el) * k; cam.r += (cam.tR - cam.r) * k;
+    const kr = reduceMotion.matches ? 1 : Math.min(1, dt * 6);          // zoom eases in a little more slowly than rotation
+    cam.az += (cam.tAz - cam.az) * k; cam.el += (cam.tEl - cam.el) * k; cam.r += (cam.tR - cam.r) * kr;
     // when zoomed in close, aim at the skater so her face and dress fill the view
-    closeness = THREE.MathUtils.smoothstep(cam.r, R_MIN, R_MIN + 7);
+    closeness = THREE.MathUtils.smoothstep(cam.r, CLOSE_R, CLOSE_R + 7);   // only below the zoom range, so the view stays centred on the arena
     closeness = 1 - closeness;
     const tx = heroPos.x * closeness, tz = heroPos.z * closeness, ty = THREE.MathUtils.lerp(2.2, 1.9, closeness);
     camTarget.x += (tx - camTarget.x) * Math.min(1, dt * 4); camTarget.z += (tz - camTarget.z) * Math.min(1, dt * 4); camTarget.y = ty;
@@ -728,7 +761,8 @@
     if (window.skateNav && OBJ_JUMPS[def.id]) {                 // same jump as the menu, then the pop-up opens
       const ob = objects.find(o => o.def === def || o.def.id === def.id);
       if (ob && !reduceMotion.matches) { ob.sv = (ob.sv || 0) + 7; burst(ob.group.localToWorld(new THREE.Vector3(0, ob.labelY * 0.6, 0))); }
-      window.skateNav.go(def.id, OBJ_JUMPS[def.id], { title: def.label, navigate: () => openSection(def.id) });
+      openSection(def.id);                                       // the pop-up opens straight away
+      window.skateNav.go(def.id, OBJ_JUMPS[def.id], { title: def.label, navigate: () => {} });   // the jump plays behind it
       return;
     }
     if (perf) return;
@@ -823,7 +857,7 @@
     if (gesture.pinch && pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y), midY = (a.y + b.y) / 2;
-      cam.tR *= gesture.dist / Math.max(1, dist);                          // pinch zoom
+      camTouched = true; cam.tR *= gesture.dist / Math.max(1, dist);                          // pinch zoom
       cam.tEl += (midY - gesture.midY) * 0.005;                            // two-finger up/down tilts
       gesture.dist = dist; gesture.midY = midY; clampCam(); return;
     }
@@ -833,7 +867,7 @@
       gesture.dragging = true; rinkEl.classList.add('dragging');
     }
     if (gesture.dragging) {
-      cam.tAz -= dx * 0.0065;
+      camTouched = true; cam.tAz -= dx * 0.0065;
       if (!gesture.touch) cam.tEl += dy * 0.005;                           // phones: vertical swipe scrolls the page
       clampCam();
     }
@@ -855,13 +889,21 @@
   rinkEl.addEventListener('lostpointercapture', e => endPointer(e, true));
   rinkEl.addEventListener('click', e => e.preventDefault());
 
-  // wheel zooms; at the zoom limits the page scrolls normally
+  // wheel / trackpad zooms gently; at the zoom limits the page scrolls normally.
+  // Each event's step is capped so fast flicks and trackpad momentum can't jump the camera, and a gesture that
+  // reaches a limit is held for a moment so its leftover momentum doesn't spill into page scrolling or page zoom.
+  let wheelHoldUntil = 0;
   rinkEl.addEventListener('wheel', e => {
     if (panelOpen()) return;
-    const zoomingOut = e.deltaY > 0;
-    if ((zoomingOut && cam.tR >= R_MAX - 0.01) || (!zoomingOut && cam.tR <= R_MIN + 0.01)) return;
-    e.preventDefault();
-    cam.tR *= Math.exp(e.deltaY * 0.0012); clampCam();
+    const now = performance.now();
+    let dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+    dy *= e.ctrlKey ? 2.2 : 0.55;                                   // pinch (ctrlKey) sends small steps; mouse wheels large ones
+    dy = THREE.MathUtils.clamp(dy, -40, 40);
+    const zoomingOut = dy > 0;
+    const atLimit = (zoomingOut && cam.tR >= R_MAX - 0.01) || (!zoomingOut && cam.tR <= R_MIN + 0.01);
+    if (atLimit) { if (now < wheelHoldUntil) e.preventDefault(); return; }   // brief hold only; not extended, so the page scrolls again right after
+    e.preventDefault(); wheelHoldUntil = now + 250;
+    camTouched = true; cam.tR *= Math.exp(dy * 0.0012); clampCam();
   }, { passive: false });
 
   // arrow keys move the skater relative to the screen (only while the rink has focus)
@@ -878,6 +920,13 @@
   rinkEl.addEventListener('keyup', e => keys.delete(e.key));
   rinkEl.addEventListener('blur', () => keys.clear());
 
+  function placeObjects(place) {
+    objects.forEach(o => {
+      const [x, z, base, face] = place[o.def.kind];
+      o.group.position.set(x, base, z); o.group.rotation.y = face; o.anchor.set(x, base, z);
+    });
+  }
+
   // ---------- resize ----------
   let lastPortrait = null;
   function resize() {
@@ -885,11 +934,20 @@
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix();
     const portrait = w / h < 0.9;
+    // framing only (same angle): wide screens slide the arena right of the intro text; tall screens move it down below the text
+    const wide = w / h > 1.7;                           // 16:9 and wider: the front-wall sign would sit on the hint, so keep it below the fold
+    const offX = portrait ? 0 : -Math.round(w * (wide ? 0.09 : 0.07));
+    const offY = portrait ? -Math.round(h * 0.16) : Math.round(h * (wide ? -0.02 : 0.045));
+    camera.setViewOffset(w, h, offX, offY, w, h);
     START = startView();
-    if (portrait !== lastPortrait) { lastPortrait = portrait; resetView(true); }
+    layoutFlags(portrait);
+    if (portrait !== lastPortrait) { lastPortrait = portrait; placeObjects(portrait ? PLACE_TALL : PLACE_WIDE); resetView(true); }
+    else if (!camTouched) resetView(true);              // the frame settled on a new size before anyone moved the camera: use the framing for this size
     clampCam();
   }
   window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(rinkEl);   // the rink can change size without a window resize (e.g. inside an embedding frame)
+  const initSize = [rinkEl.clientWidth, rinkEl.clientHeight];
   resize();
 
   // =====================================================================
@@ -1091,11 +1149,16 @@
   }
 
   let first = true;
+  let framesDrawn = 0;
+  // read-only state for checks (no effect on the page)
+  window.__rinkInfo = () => ({ init: initSize, size: [rinkEl.clientWidth, rinkEl.clientHeight], portrait: lastPortrait, flagsTall,
+    camR: +cam.r.toFixed(2), startR: +START.r.toFixed(2), rMin: +R_MIN.toFixed(2), rMax: +R_MAX.toFixed(2), az: +cam.az.toFixed(2), touched: camTouched, frames: framesDrawn,
+    running, hidden: document.hidden, ctxLost: renderer.getContext().isContextLost() });
   function frame(now) {
     if (!running || document.hidden) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
     step(dt);
-    renderer.render(scene, camera);
+    renderer.render(scene, camera); framesDrawn++;
     if (first) { first = false; rinkEl.classList.add('ready'); }
     requestAnimationFrame(frame);
   }
