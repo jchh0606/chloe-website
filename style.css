@@ -2012,3 +2012,11 @@ video.ch-fg{background:transparent}
   .pji-link{padding:24px 0 30px;gap:18px}
 }
 #projects .pj-head .lead{max-width:none;text-wrap:pretty}
+
+/* ---- footer privacy link + privacy note (analytics.js) ---- */
+.foot-link{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.foot-link:hover{color:var(--ink,inherit)}
+.privacy-panel .panel-body p{margin:0 0 14px;line-height:1.55}
+.privacy-panel .privacy-choice label{display:flex;gap:10px;align-items:flex-start;font-weight:600;cursor:pointer}
+.privacy-panel .privacy-choice input{margin-top:4px;width:18px;height:18px;flex:none}
+.privacy-panel .privacy-status{color:var(--muted);font-size:14px;min-height:1.2em}

@@ -351,6 +351,7 @@
     if (!fromHash) setExpHash(fi);
     const was = expPageOpen();
     edEl.hidden = false;
+    if (window.SiteAnalytics) window.SiteAnalytics.view('experience', XF()[fi][0].slug, edEl);
     BG().forEach(el => el.inert = true); document.documentElement.classList.add('am-lock');
     if (!was) anim(edEl, [{ opacity: 0, transform: 'translateX(48px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 380 });
     $('edTitle').focus({ preventScroll: true });
@@ -759,6 +760,7 @@
     if (!fromHash) { try { history.replaceState(null, '', '#project-' + PS()[ci].slug); } catch (_) {} }
     const wasOpen = projectPageOpen();
     pdEl.hidden = false; pdEl.querySelector('.sp-scroll').scrollTop = 0;
+    if (window.SiteAnalytics) window.SiteAnalytics.view('project', PS()[ci].slug, pdEl);
     BG().forEach(el => el.inert = true); document.documentElement.classList.add('am-lock');
     if (!wasOpen) anim(pdEl, [{ opacity: 0, transform: 'translateX(48px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 380 });
     if (h) h.focus({ preventScroll: true });
@@ -780,6 +782,7 @@
     if (!fromHash) setProjectHash(i);
     const wasOpen = projectPageOpen();
     pdEl.hidden = false;
+    if (window.SiteAnalytics) window.SiteAnalytics.view('project', PL()[i].slug, pdEl);
     BG().forEach(el => el.inert = true); document.documentElement.classList.add('am-lock');   // the page underneath keeps its scroll position
     if (!wasOpen) anim(pdEl, [{ opacity: 0, transform: 'translateX(48px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 380 });
     $('pdTitle').focus({ preventScroll: true });
@@ -1580,6 +1583,7 @@
     // 1) the skater stops, the light warms up and she bows + waves; 2) then the card rises
     if (window.__rinkContact) window.__rinkContact(true);           // the bow + warm light still play, but the card does not wait for them
     showContactCard();
+    if (window.SiteAnalytics) window.SiteAnalytics.contactOpen(opener);
   }
   function cancelGreet() {                                            // Esc during the bow: skip the card
     clearTimeout(cmGreet); cmGreet = null;

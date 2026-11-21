@@ -832,5 +832,23 @@ window.SITE = {
       location: "Paris, France",
       photo: "assets/chloe-profile.jpg"
     }
+  },
+
+  // ---- Privacy note (footer link "Privacy"). Keep this in line with the Umami settings. ----
+  privacy: {
+    link: "Privacy",
+    title: "Privacy",
+    paragraphs: [
+      "This site counts visits with Umami Cloud, a privacy-friendly analytics service, so I can see which parts of my portfolio people read. It sets no cookies, does not store your IP address and does not build a profile of you or follow you across other websites.",
+      "What is recorded: the page, the website you came from, your country, browser, device type and screen size, plus anonymous events such as which project or experience you opened, roughly how long a section was on screen while you were active, how far down the page you scrolled and clicks on the contact, email and LinkedIn buttons. No names, email addresses or messages are recorded.",
+      "Why: my legitimate interest in understanding how the portfolio is used (Art. 6(1)(f) GDPR). The data is stored by Umami in the EU and kept for up to 6 months. Only I can see the statistics.",
+      "Your choice: visits are not counted if your browser sends Do Not Track or Global Privacy Control, or if you switch counting off below. This choice is saved in this browser only.",
+      "Other services: the site is hosted on GitHub Pages; fonts come from Google Fonts and the 3D rink library from cdnjs (Cloudflare). These providers receive your IP address when your browser loads files from them.",
+      "Questions or requests about your data: please get in touch through the Contact section."
+    ],
+    optOutLabel: "Do not count my visits on this browser",
+    offNote: "Done. Your visits on this browser will not be counted.",
+    onNote: "Counting is back on for this browser.",
+    signalNote: "Your browser asks sites not to track you, so your visits are not counted."
   }
 };
