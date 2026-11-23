@@ -47,7 +47,7 @@ window.SITE = {
       { role: "Mixed Zone Supervisor", org: "ISU World Figure Skating Championships", location: "Prague, Czech Republic", date: "March 2026",
         points: ["Coordinated athlete movements, media access and interview logistics as part of a seven-person operations team.",
                  "Supported mixed-zone operations at a championship with 487 accredited media and broadcast personnel."] },
-      { role: "Press Team", org: "ISU Grand Prix de France", location: "Angers, France", date: "October 2025 & 2026",
+      { role: "Mixed Zone Manager", org: "ISU Grand Prix de France", location: "Angers, France", date: "October 2025 & 2026",
         points: ["Supported interviews, press conferences and mixed-zone operations.",
                  "Assisted 80+ accredited media representatives with on-site requests and Korean-English interpretation."] },
       { role: "President", org: "Coventry University Ice Skating Society", location: "Coventry, United Kingdom", date: "2022-2025",
@@ -306,8 +306,8 @@ window.SITE = {
       {
         id: 2, slug: "grand-prix-de-france-angers", featured: true, published: true, group: "events",
         organisation: "ISU Grand Prix de France",
-        officialRole: "Press Team",
-        editorialHeadline: "Two Editions with the Press Team",
+        officialRole: "Mixed Zone Manager",
+        editorialHeadline: "From Volunteer to Mixed Zone Manager",
         subtitle: "Working between athletes and international media across two editions.",
         location: "Angers, France",
         date: "October 2025 & October 2026",
@@ -331,7 +331,7 @@ window.SITE = {
         coverImage: "", coverAlt: "",
         gallery: [], mediaLinks: [], relatedProjects: [],
         editions: [],
-        // Earlier per-year notes, kept for reference but NOT shown: the latest CV lists "Press Team" for both years.
+        // Earlier per-year notes, kept for reference but NOT shown: the latest CV lists Mixed Zone Volunteer (2025) and Mixed Zone Manager (2026).
         previousEditions: [
           {
             year: "2025",
@@ -823,7 +823,7 @@ window.SITE = {
     // 실제 값을 넣으면 버튼이 나타납니다. 비어 있으면 버튼이 보이지 않습니다.
     linkedin: "https://www.linkedin.com/in/chaehyeon-chloe-jeong/",
     email: "jchh0606@gmail.com",
-    cvLink: "",     // CV 파일을 받으면 연결할게요 (비어 있으면 CV 버튼이 보이지 않아요)
+    cvLink: "assets/Chaehyeon_Jeong_CV.pdf",     // CV를 바꿀 때는 이 파일을 같은 이름으로 덮어쓰면 돼요 (비우면 CV 버튼이 사라져요)
     // ---- Contact 팝업 카드 ("After the Show") ----
     card: {
       heading: "Let’s Connect.",

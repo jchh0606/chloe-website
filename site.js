@@ -850,7 +850,7 @@
     const acts = [];
     if (C.email) acts.push(`<a class="ct-btn primary" href="mailto:${esc(C.email)}">Email me</a>`);
     if (C.linkedin) acts.push(`<a class="ct-btn" href="${esc(C.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>`);
-    if (C.cvLink) acts.push(`<a class="ct-btn" href="${esc(C.cvLink)}" target="_blank" rel="noopener">Download CV</a>`);   // appears once a CV link is set in content.js
+    if (C.cvLink) acts.push(`<a class="ct-btn" href="${esc(C.cvLink)}" target="_blank" rel="noopener">View CV</a>`);   // appears once a CV link is set in content.js
     if (!acts.length) return S.showTodo ? `<div class="todo"><b>To add:</b> LinkedIn link, email address and CV link</div>` : '';
     return `<div class="ct">
         <div class="ct-text">
@@ -874,11 +874,13 @@
       li: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.5h4V21H3zM9.5 9.5h3.8v1.6h.06c.53-1 1.83-2.06 3.77-2.06 4.03 0 4.77 2.65 4.77 6.1V21h-4v-5.1c0-1.22-.02-2.78-1.7-2.78-1.7 0-1.96 1.32-1.96 2.69V21h-4z"/></svg>',
       pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
       globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>',
-      award: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="m8.6 13.9-1.6 7.1 5-2.8 5 2.8-1.6-7.1"/></svg>'
+      award: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="m8.6 13.9-1.6 7.1 5-2.8 5 2.8-1.6-7.1"/></svg>',
+      doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>'
     };
     const contact = [
       C.email ? `<li>${ic.mail}<a href="mailto:${esc(C.email)}">${esc(C.email)}</a></li>` : '',
       C.linkedin ? `<li>${ic.li}<a href="${esc(C.linkedin)}" target="_blank" rel="noopener">LinkedIn</a></li>` : '',
+      C.cvLink ? `<li>${ic.doc}<a href="${esc(C.cvLink)}" target="_blank" rel="noopener" aria-label="View CV (PDF, opens in a new tab)">View CV (PDF)</a></li>` : '',
       P.location ? `<li>${ic.pin}<span>${T('profile.location')}</span></li>` : '',
       P.languages ? `<li>${ic.globe}<span>${T('profile.languages')}</span></li>` : ''
     ].join('');
@@ -1509,7 +1511,7 @@
     const actions = [];
     if (C.linkedin) actions.push(`<a class="cm-btn primary" href="${esc(C.linkedin)}" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)">LinkedIn</a>`);
     if (C.email) actions.push(`<button type="button" class="cm-btn gold" id="cmMailBtn" aria-expanded="false" aria-controls="cmMail">Email me</button>`);
-    if (C.cvLink) actions.push(`<a class="cm-btn" href="${esc(C.cvLink)}" target="_blank" rel="noopener noreferrer" aria-label="Download CV (opens in a new tab)">Download CV</a>`);
+    if (C.cvLink) actions.push(`<a class="cm-btn" href="${esc(C.cvLink)}" target="_blank" rel="noopener noreferrer" aria-label="View CV (opens in a new tab)">View CV</a>`);
     return `
       <div class="cm-overlay" data-cm-close></div>
       <div class="cm-wrap">

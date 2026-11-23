@@ -18,7 +18,7 @@
      contact_open     { from }                  the contact card opens
      email_click      { method, location }      gmail / outlook / mail_app / mailto / copy
      linkedin_click   { location }
-     cv_download      { location }              (shows up once a CV link is set in content.js)
+     cv_view          { location }              the CV (PDF) opened from About, Contact or the contact card
    Turn on console logging while testing:  localStorage.setItem('sa.debug', '1')
    ===================================================================== */
 (function () {
@@ -203,7 +203,7 @@
     const a = t.closest('a[href]'); if (!a) return;
     const href = a.getAttribute('href') || '';
     const cv = window.SITE && window.SITE.contact && window.SITE.contact.cvLink;
-    if (cv && href === cv) return track('cv_download', { location: where(a) });
+    if (cv && href === cv) return track('cv_view', { location: where(a) });
     if (/linkedin\.com/i.test(href)) return track('linkedin_click', { location: where(a) });
     if (/mail\.google\.com/i.test(href)) return track('email_click', { method: 'gmail', location: where(a) });
     if (/outlook\.(office|live)\.com/i.test(href)) return track('email_click', { method: 'outlook', location: where(a) });
